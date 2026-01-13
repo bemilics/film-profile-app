@@ -47,84 +47,39 @@
 
         async function analyzeProfile() {
             if (!state.image) return;
-            
+
             setState({ loading: true, error: null });
 
             try {
                 const base64Data = state.image.split(',')[1];
-                
-                const response = await fetch('https://api.anthropic.com/v1/messages', {
+
+                // Llamar a nuestra función serverless
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        model: 'claude-sonnet-4-20250514',
-                        max_tokens: 1000,
-                        messages: [{
-                            role: 'user',
-                            content: [
-                                {
-                                    type: 'image',
-                                    source: {
-                                        type: 'base64',
-                                        media_type: 'image/jpeg',
-                                        data: base64Data
-                                    }
-                                },
-                                {
-                                    type: 'text',
-                                    text: `Analiza este perfil de Letterboxd y genera un perfil de dating chistoso. 
-
-IMPORTANTE: Responde SOLO con un objeto JSON, sin markdown, sin explicaciones, sin backticks. El JSON debe tener esta estructura exacta:
-
-{
-  "mainCharacter": {
-    "name": "Nombre del personaje de película",
-    "description": "Por qué eres este personaje (máx 120 caracteres)"
-  },
-  "greenFlags": [
-    "Green flag 1 (máx 60 caracteres)",
-    "Green flag 2 (máx 60 caracteres)"
-  ],
-  "redFlags": [
-    "Red flag 1 (máx 60 caracteres)",
-    "Red flag 2 (máx 60 caracteres)",
-    "Red flag 3 (máx 60 caracteres)"
-  ],
-  "compatibility": {
-    "type": "Tipo de persona que haría match (máx 50 caracteres)",
-    "description": "Por qué harían match (máx 100 caracteres)"
-  }
-}
-
-Tono: Sarcástico, Gen Z, chistoso pero no cruel. Enfócate en:
-- Patterns en géneros/directores/años
-- Contradicciones entre favoritas y recientes
-- Hot takes en los ratings
-- Referencias a "film bro", pretentiousness, etc.
-
-Personajes comunes a asignar: Tyler Durden, Patrick Bateman, Manic Pixie Dream Girl, Andy Sachs, Llewyn Davis, cualquier protagonista de A24, etc.
-
-RECUERDA: Solo JSON, sin formato markdown.`
-                                }
-                            ]
-                        }]
+                        imageData: base64Data
                     })
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const data = await response.json();
                 let analysisText = data.content.find(item => item.type === 'text')?.text || '';
-                
+
                 analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-                
+
                 const analysis = JSON.parse(analysisText);
                 setState({ result: analysis, loading: false });
             } catch (err) {
                 console.error('Error:', err);
-                setState({ 
-                    error: 'Error al analizar el perfil. Intenta de nuevo.', 
-                    loading: false 
+                setState({
+                    error: 'Error al analizar el perfil. Intenta de nuevo.',
+                    loading: false
                 });
             }
         }
