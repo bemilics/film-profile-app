@@ -26,9 +26,11 @@
 
     <script>
         // Detectar si estamos en entorno de desarrollo/preview
-        const isProduction = window.location.hostname !== 'localhost' &&
-                            !window.location.hostname.includes('vercel.app') &&
-                            !window.location.hostname.includes('127.0.0.1');
+        // isDevelopment = true para: localhost, 127.0.0.1, y preview deployments de Vercel (con -git-)
+        const isDevelopment = window.location.hostname === 'localhost' ||
+                              window.location.hostname === '127.0.0.1' ||
+                              window.location.hostname.includes('-git-'); // Vercel preview deployments
+        const isProduction = !isDevelopment;
 
         // State management
         let state = {
