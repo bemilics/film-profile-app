@@ -5,10 +5,64 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { imageData } = req.body;
+    const { imageData, useMock } = req.body;
 
     if (!imageData) {
       return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    // MODO DEBUG: Solo en preview y development, nunca en production
+    const isProduction = process.env.VERCEL_ENV === 'production';
+    if (!isProduction && useMock) {
+      console.log('DEBUG MODE: Returning mock data (non-production environment)');
+
+      // Mock data para testing visual
+      const mockData = {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            bio: "Fanática del cine con criterio cuestionable pero divertido. Mezclas Wes Anderson con Marvel sin vergüenza. Tu Letterboxd es un mood board de personalidad: 50% pretentious, 50% guilty pleasures, 100% entretenido.",
+            greenFlags: [
+              "Aprecias tanto el slow cinema como las explosiones de Michael Bay",
+              "Das 5 estrellas a películas que técnicamente son malas pero te hacen feliz",
+              "Tu sección de favoritas tiene más diversidad que un festival de cine"
+            ],
+            redFlags: [
+              "Tienes la audacia de poner una película de Nolan en favoritas (qué original)",
+              "Viste 3 películas de A24 y ya te consideras cinéfila",
+              "Le diste 4 estrellas a una película solo porque el protagonista es guapo"
+            ],
+            firstDateReactions: [
+              {
+                user: "@coffeesnob",
+                comment: "Explicó la diferencia entre 35mm y digital por 15 minutos. Pretencioso pero de forma adorable.",
+                rating: "⭐⭐⭐⭐"
+              },
+              {
+                user: "@normalviewer",
+                comment: "Lloró con Paddington 2. Sin ironía. Genuinas lágrimas. Definitivamente keeper material.",
+                rating: "⭐⭐⭐⭐⭐"
+              },
+              {
+                user: "@filmcritichottie",
+                comment: "Dijo que Nolan es 'mid' en el primer date. Marry me challenge.",
+                rating: "⭐⭐⭐⭐½"
+              }
+            ],
+            compatibility: {
+              type: "Alguien que respete tu caos cinematográfico pero te desafíe",
+              description: "Necesitas a alguien que no te juzgue por llorar con Toy Story 3, pero que te haga ver películas fuera de tu zona de confort. Alguien que traiga palomitas a la proyección de 3 horas en blanco y negro que insistes en ver."
+            }
+          })
+        }]
+      };
+
+      return res.status(200).json(mockData);
+    }
+
+    // PRODUCTION: Siempre usa la API real
+    if (isProduction && useMock) {
+      console.log('Mock mode requested in production - ignoring and using real API');
     }
 
     // PASO 1: Usar Haiku para parsear la información de la imagen
@@ -98,10 +152,6 @@ Stats adicionales: ${parsedInfo.stats || 'N/A'}
 IMPORTANTE: Responde SOLO con un objeto JSON, sin markdown, sin explicaciones, sin backticks. El JSON debe tener esta estructura exacta:
 
 {
-  "mainCharacter": {
-    "name": "Nombre del personaje",
-    "description": "Por qué eres este personaje (150-200 caracteres). Debe ser específico y relacionado al universo cinematográfico del usuario."
-  },
   "bio": "Una descripción del usuario basada en sus películas (180-220 caracteres). Captura su personalidad cinematográfica con humor y especificidad.",
   "greenFlags": [
     "Green flag 1 (70-90 caracteres, específica y detallada)",
@@ -112,6 +162,23 @@ IMPORTANTE: Responde SOLO con un objeto JSON, sin markdown, sin explicaciones, s
     "Red flag 1 (70-90 caracteres, específica y detallada)",
     "Red flag 2 (70-90 caracteres, específica y detallada)",
     "Red flag 3 (70-90 caracteres, específica y detallada)"
+  ],
+  "firstDateReactions": [
+    {
+      "user": "@usuario1",
+      "comment": "Comentario divertido sobre el date (80-110 caracteres)",
+      "rating": "⭐⭐⭐⭐"
+    },
+    {
+      "user": "@usuario2",
+      "comment": "Comentario divertido sobre el date (80-110 caracteres)",
+      "rating": "⭐⭐⭐⭐⭐"
+    },
+    {
+      "user": "@usuario3",
+      "comment": "Comentario divertido sobre el date (80-110 caracteres)",
+      "rating": "⭐⭐⭐⭐½"
+    }
   ],
   "compatibility": {
     "type": "Tipo de persona que haría match (60-70 caracteres)",
@@ -125,17 +192,6 @@ GUÍA DE TONO Y CONTENIDO:
 - Busca patterns interesantes: géneros, directores, épocas, temas recurrentes.
 - Señala contradicciones o ironías entre favoritas y recientes.
 - Hot takes basados en las películas específicas del usuario.
-
-PERSONAJE IDENTITARIO (mainCharacter):
-- NO uses personajes obvios de las películas del perfil (muy predecible).
-- NO uses personajes completamente random sin relación (pierde particularidad).
-- BUSCA EL PUNTO MEDIO: Personajes del mismo universo temático/estilístico.
-  Ejemplos:
-  * Si les gusta horror A24 → personaje de otro horror indie/art house
-  * Si son film bros clásicos → personaje de Scorsese/Tarantino aunque no esté en su top 4
-  * Si ven mucho romance indie → personaje de otra película indie similar
-  * Si son fans de sci-fi cerebral → personaje de otra sci-fi intelectual
-- Piensa en el "vibe" y universo temático, no en matching directo de títulos.
 
 BIO:
 - Debe capturar la esencia cinematográfica del usuario.
@@ -151,6 +207,20 @@ RED FLAGS:
 - Señala contradicciones, pretentiousness, o aspectos cuestionables con humor.
 - Deben ser observations reales basadas en las películas, no insultos genéricos.
 - El humor debe venir de la especificidad.
+
+FIRST DATE REACTIONS:
+- Son reviews de "dates ficticias previas" con este usuario.
+- 3 reviews de diferentes personas (@usuario puede ser cualquier username creativo).
+- Cada review debe:
+  * Mencionar algo específico que pasó en el "date" relacionado con películas
+  * Tener personalidad propia (diferentes perspectivas)
+  * Ser divertida pero honesta
+  * Usar ratings de estrellas (⭐) - varía entre 3-5 estrellas, puede usar ½
+- Ejemplos de buenos comments:
+  * "Explained the Kuleshov effect on date 1. Pretencioso pero hot somehow."
+  * "Cried during Paddington 2. No ironía, genuinas lágrimas. Keeper."
+  * "Said their comfort movie was Synecdoche New York. Red flag or green flag? Still deciding."
+- Los @usernames pueden ser creativos: @filmsnob420, @normalviewer, @a24stan, etc.
 
 COMPATIBILIDAD:
 - NO digas "alguien que también ame X" (muy obvio y aburrido).
