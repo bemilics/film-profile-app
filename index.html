@@ -21,7 +21,7 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-pink-50 to-purple-50 min-h-screen">
+<body class="bg-[#0f1419] min-h-screen">
     <div id="root" class="container mx-auto px-4 py-8 max-w-2xl"></div>
 
     <script>
@@ -133,27 +133,27 @@
             root.innerHTML = `
                 <!-- Header -->
                 <div class="text-center mb-8">
-                    <h1 class="text-5xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent mb-2">
+                    <h1 class="text-5xl font-bold text-[#ff006e] mb-2">
                         CINEMATCH
                     </h1>
-                    <p class="text-gray-600 text-lg">Tu Dating Profile Cinematográfico</p>
+                    <p class="text-gray-400 text-lg">Tu Dating Profile Cinematográfico</p>
                 </div>
 
                 ${!state.result ? `
                 <!-- Upload Section -->
-                <div class="bg-white rounded-2xl shadow-xl p-8 mb-6">
+                <div class="bg-[#14181c] rounded-2xl shadow-xl p-8 mb-6 border border-[#2c3440]">
                     <div class="text-center mb-6">
-                        <p class="text-gray-700 mb-4">
+                        <p class="text-gray-300 mb-4">
                             Sube un screenshot de tu perfil de Letterboxd con tus 4 películas favoritas y últimas vistas
                         </p>
                     </div>
 
-                    <label class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-pink-300 rounded-xl cursor-pointer hover:border-pink-500 transition-all bg-pink-50 hover:bg-pink-100">
+                    <label class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
                         <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                            <svg class="w-12 h-12 mb-3 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-12 h-12 mb-3 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
-                            <p class="mb-2 text-sm text-gray-700">
+                            <p class="mb-2 text-sm text-gray-300">
                                 <span class="font-semibold">Click para subir</span> o arrastra aquí
                             </p>
                             <p class="text-xs text-gray-500">PNG, JPG (MAX. 5MB)</p>
@@ -171,16 +171,16 @@
                             <img src="${state.image}" alt="Preview" class="rounded-lg mx-auto max-h-64 object-contain" />
 
                             ${!isProduction ? `
-                                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div class="mt-4 p-3 bg-[#2c3440] border border-[#ffd93d] rounded-lg">
                                     <label class="flex items-center gap-2 cursor-pointer">
                                         <input
                                             type="checkbox"
                                             id="mock-checkbox"
                                             ${state.useMock ? 'checked' : ''}
                                             onchange="setState({ useMock: this.checked })"
-                                            class="w-4 h-4 text-pink-500 rounded focus:ring-pink-500"
+                                            class="w-4 h-4 text-[#ffd93d] rounded focus:ring-[#ffd93d]"
                                         />
-                                        <span class="text-sm text-yellow-800 font-medium">
+                                        <span class="text-sm text-[#ffd93d] font-medium">
                                             🛠️ Modo Debug (usar mock data - solo dev/preview)
                                         </span>
                                     </label>
@@ -190,7 +190,7 @@
                             <button
                                 onclick="analyzeProfile()"
                                 ${state.loading ? 'disabled' : ''}
-                                class="w-full mt-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="w-full mt-4 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 ${state.loading ? '🎬 Analizando tu taste...' : '💘 Generar Mi Perfil'}
                             </button>
@@ -198,16 +198,16 @@
                     ` : ''}
 
                     ${state.error ? `
-                        <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
+                        <div class="mt-4 p-4 bg-[#2c3440] border border-[#ff4757] rounded-lg text-[#ff4757] text-center">
                             ${state.error}
                         </div>
                     ` : ''}
                 </div>
 
                 <!-- Instructions -->
-                <div class="bg-white rounded-2xl shadow-lg p-6">
-                    <h3 class="font-bold text-lg mb-3 text-gray-800">📸 Cómo tomar tu screenshot:</h3>
-                    <ol class="space-y-2 text-gray-600">
+                <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border border-[#2c3440]">
+                    <h3 class="font-bold text-lg mb-3 text-[#ffd93d]">📸 Cómo tomar tu screenshot:</h3>
+                    <ol class="space-y-2 text-gray-300">
                         <li>1. Ve a tu perfil de Letterboxd</li>
                         <li>2. Asegúrate que se vean tus 4 películas favoritas</li>
                         <li>3. Asegúrate que se vean tus últimas 4 películas vistas</li>
@@ -217,24 +217,24 @@
                 ` : `
                 <!-- Result Card -->
                 <div class="space-y-6">
-                    <div 
+                    <div
                         id="result-card"
-                        class="story-card bg-gradient-to-br from-pink-500 to-purple-600 rounded-3xl shadow-2xl overflow-hidden mx-auto"
+                        class="story-card bg-[#14181c] rounded-3xl shadow-2xl overflow-hidden mx-auto border border-[#2c3440]"
                     >
                         <div class="h-full flex flex-col p-4 text-white overflow-hidden">
                             <!-- Header -->
                             <div class="text-center mb-2 flex-shrink-0">
-                                <h2 class="text-2xl font-bold mb-0.5">CINEMATCH</h2>
-                                <p class="text-xs opacity-90">Tu Dating Profile</p>
+                                <h2 class="text-2xl font-bold mb-0.5 text-[#ff006e]">CINEMATCH</h2>
+                                <p class="text-xs text-gray-400">Tu Dating Profile</p>
                             </div>
 
                             <!-- Bio -->
-                            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 mb-1.5 flex-shrink-0">
+                            <div class="bg-[#2c3440] rounded-xl p-2.5 mb-1.5 flex-shrink-0 border border-[#445566]">
                                 <div class="flex items-center gap-1.5 mb-1">
                                     <div class="text-base">📝</div>
-                                    <h4 class="text-xs font-bold">BIO</h4>
+                                    <h4 class="text-xs font-bold text-[#ffd93d]">BIO</h4>
                                 </div>
-                                <p class="text-[10px] leading-tight opacity-90">
+                                <p class="text-[10px] leading-tight text-gray-300">
                                     ${state.result.bio}
                                 </p>
                             </div>
@@ -242,30 +242,30 @@
                             <!-- Flags Section -->
                             <div class="grid grid-cols-2 gap-1.5 mb-1.5 flex-shrink-0">
                                 <!-- Green Flags -->
-                                <div class="bg-green-500/20 backdrop-blur-md rounded-xl p-2">
-                                    <h4 class="text-[11px] font-bold mb-1 flex items-center gap-0.5">
+                                <div class="bg-[#2c3440] rounded-xl p-2 border border-[#00d9a3]">
+                                    <h4 class="text-[11px] font-bold mb-1 flex items-center gap-0.5 text-[#00d9a3]">
                                         💚 GREEN FLAGS
                                     </h4>
                                     <div class="space-y-0.5">
                                         ${state.result.greenFlags.map(flag => `
                                             <div class="flex items-start gap-1">
-                                                <span class="text-[8px] mt-0.5 flex-shrink-0">•</span>
-                                                <p class="text-[8px] leading-tight">${flag}</p>
+                                                <span class="text-[8px] mt-0.5 flex-shrink-0 text-[#00d9a3]">•</span>
+                                                <p class="text-[8px] leading-tight text-gray-300">${flag}</p>
                                             </div>
                                         `).join('')}
                                     </div>
                                 </div>
 
                                 <!-- Red Flags -->
-                                <div class="bg-red-500/20 backdrop-blur-md rounded-xl p-2">
-                                    <h4 class="text-[11px] font-bold mb-1 flex items-center gap-0.5">
+                                <div class="bg-[#2c3440] rounded-xl p-2 border border-[#ff4757]">
+                                    <h4 class="text-[11px] font-bold mb-1 flex items-center gap-0.5 text-[#ff4757]">
                                         🚩 RED FLAGS
                                     </h4>
                                     <div class="space-y-0.5">
                                         ${state.result.redFlags.map(flag => `
                                             <div class="flex items-start gap-1">
-                                                <span class="text-[8px] mt-0.5 flex-shrink-0">•</span>
-                                                <p class="text-[8px] leading-tight">${flag}</p>
+                                                <span class="text-[8px] mt-0.5 flex-shrink-0 text-[#ff4757]">•</span>
+                                                <p class="text-[8px] leading-tight text-gray-300">${flag}</p>
                                             </div>
                                         `).join('')}
                                     </div>
@@ -273,43 +273,43 @@
                             </div>
 
                             <!-- First Date Reactions -->
-                            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 mb-1.5 flex-shrink-0">
+                            <div class="bg-[#2c3440] rounded-xl p-2.5 mb-1.5 flex-shrink-0 border border-[#445566]">
                                 <div class="flex items-center gap-1.5 mb-1.5">
                                     <div class="text-base">💬</div>
-                                    <h4 class="text-xs font-bold">FIRST DATE REACTIONS</h4>
+                                    <h4 class="text-xs font-bold text-[#ffd93d]">FIRST DATE REACTIONS</h4>
                                 </div>
                                 <div class="space-y-1">
                                     ${state.result.firstDateReactions.map(reaction => `
-                                        <div class="bg-black/20 rounded-lg p-1.5">
+                                        <div class="bg-[#1a1f26] rounded-lg p-1.5 border border-[#2c3440]">
                                             <div class="flex items-center justify-between mb-0.5">
-                                                <span class="text-[9px] font-semibold opacity-80">${reaction.user}</span>
-                                                <span class="text-[9px]">${reaction.rating}</span>
+                                                <span class="text-[9px] font-semibold text-[#ffd93d]">${reaction.user}</span>
+                                                <span class="text-[9px] text-[#ff006e]">${reaction.rating}</span>
                                             </div>
-                                            <p class="text-[8px] leading-tight opacity-90">"${reaction.comment}"</p>
+                                            <p class="text-[8px] leading-tight text-gray-300">"${reaction.comment}"</p>
                                         </div>
                                     `).join('')}
                                 </div>
                             </div>
 
                             <!-- Compatibility -->
-                            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 flex-shrink-0">
+                            <div class="bg-[#2c3440] rounded-xl p-2.5 flex-shrink-0 border border-[#ff006e]">
                                 <div class="flex items-start gap-1.5 mb-1">
                                     <div class="text-lg flex-shrink-0">💘</div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-[9px] opacity-80 mb-0.5">WHO'D SWIPE RIGHT:</p>
-                                        <h3 class="text-xs font-bold leading-tight">
+                                        <p class="text-[9px] text-gray-400 mb-0.5">WHO'D SWIPE RIGHT:</p>
+                                        <h3 class="text-xs font-bold leading-tight text-[#ff006e]">
                                             ${state.result.compatibility.type}
                                         </h3>
                                     </div>
                                 </div>
-                                <p class="text-[10px] leading-tight opacity-90">
+                                <p class="text-[10px] leading-tight text-gray-300">
                                     ${state.result.compatibility.description}
                                 </p>
                             </div>
 
                             <!-- Footer -->
                             <div class="text-center mt-1.5 flex-shrink-0">
-                                <p class="text-[9px] opacity-70">cinematch.app (fake lol)</p>
+                                <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
                             </div>
                         </div>
                     </div>
@@ -318,13 +318,13 @@
                     <div class="flex gap-4">
                         <button
                             onclick="downloadResult()"
-                            class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all"
+                            class="flex-1 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
                         >
                             📱 Descargar para Stories
                         </button>
                         <button
                             onclick="resetApp()"
-                            class="flex-1 bg-gray-200 text-gray-700 py-4 rounded-xl font-semibold text-lg hover:bg-gray-300 transition-all"
+                            class="flex-1 bg-[#2c3440] text-gray-300 py-4 rounded-xl font-semibold text-lg hover:bg-[#3a4554] transition-all border border-[#445566]"
                         >
                             🔄 Hacer Otro
                         </button>
