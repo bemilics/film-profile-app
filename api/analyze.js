@@ -21,11 +21,11 @@ module.exports = async function handler(req, res) {
         content: [{
           type: 'text',
           text: JSON.stringify({
-            bio: "El tipo de persona que tiene opinions fuertes sobre cosas random. Probablemente cancela planes para quedarse en casa, pero cuando sale es la persona más interesante de la conversación. Definitivamente tiene un Spotify playlist para cada mood existencial.",
+            bio: "El tipo de persona que tiene opiniones fuertes sobre cosas random. Probablemente cancela planes para quedarse en casa, pero cuando sale es la persona más interesante de la conversación. Definitivamente tiene un playlist de Spotify para cada momento existencial.",
             greenFlags: [
               "Emocionalmente disponible y no le da miedo sentir cosas intensas",
               "Tiene paciencia para las cosas buenas y aprecia los detalles sutiles de la vida",
-              "Open-minded y dispuesto a probar cosas nuevas sin juzgar inmediatamente"
+              "Mente abierta y dispuesto a probar cosas nuevas sin juzgar inmediatamente"
             ],
             redFlags: [
               "Probablemente romanticiza su propia complejidad emocional un poco demasiado",
@@ -35,23 +35,23 @@ module.exports = async function handler(req, res) {
             firstDateReactions: [
               {
                 user: "@datenight_chronicles",
-                comment: "Hizo contacto visual intenso toda la noche y preguntó sobre mi relación con mis papás. Deep pero real.",
+                comment: "Hizo contacto visual intenso toda la noche y preguntó sobre mi relación con mis papás. Profundo pero real.",
                 rating: "⭐⭐⭐⭐½"
               },
               {
                 user: "@just_vibing",
-                comment: "Ordenó por nosotros dos sin preguntar pero acertó perfecto. Confident energy.",
+                comment: "Ordenó por nosotros dos sin preguntar pero acertó perfecto. Confianza nivel 100.",
                 rating: "⭐⭐⭐⭐"
               },
               {
                 user: "@overthinker_supreme",
-                comment: "Se emocionó hablando de su childhood y casi llora. Vulnerability is hot tbh.",
+                comment: "Se emocionó hablando de su niñez y casi llora. La vulnerabilidad es atractiva tbh.",
                 rating: "⭐⭐⭐⭐⭐"
               }
             ],
             compatibility: {
-              type: "Alguien que te ground cuando estás demasiado in your head",
-              description: "Necesitas a alguien que entienda tu need de introspección pero que también te recuerde que la vida pasa afuera de tu cabeza. Alguien patient que no te apure pero tampoco te deje quedarte stuck en overthinking mode."
+              type: "Alguien que te aterrice cuando estás pensando de más",
+              description: "Necesitas a alguien que entienda tu necesidad de introspección pero que también te recuerde que la vida pasa afuera de tu cabeza. Alguien paciente que no te apure pero tampoco te deje atascado pensando demasiado."
             }
           })
         }]
@@ -187,7 +187,7 @@ IMPORTANTE: Responde SOLO con un objeto JSON, sin markdown, sin explicaciones, s
 }
 
 GUÍA GENERAL:
-- Tono: Sarcástico, Gen Z, chistoso pero no cruel. Insightful y específico, no genérico.
+- Tono: Sarcástico, Gen Z, chistoso pero no cruel. Perceptivo y específico, no genérico.
 - USA LAS PELÍCULAS COMO VENTANA A LA PERSONALIDAD, no como el tema principal.
 - El cine revela rasgos de personalidad: alguien que ve películas tristes todo el tiempo probablemente es introspectivo, alguien que solo ve blockbusters tal vez evita la profundidad emocional, etc.
 - Infiere personalidad, hábitos, valores, comportamientos basándote en sus elecciones cinematográficas.
@@ -195,52 +195,52 @@ GUÍA GENERAL:
 BIO:
 - ENFÓCATE EN PERSONALIDAD, NO EN GUSTOS DE CINE.
 - Pregúntate: ¿Qué tipo de persona es basándote en lo que ve?
-- ¿Qué le gusta hacer fuera del cine? (infiere: ¿es social? ¿introspectivo? ¿aventurero? ¿homebody?)
+- ¿Qué le gusta hacer fuera del cine? (infiere: ¿es social? ¿introspectivo? ¿aventurero? ¿más de casa?)
 - ¿Cómo es en relaciones? ¿En el día a día? ¿Qué valora?
 - Puedes mencionar el cine LEVEMENTE como justificación, pero el foco es la persona.
 - Ejemplos de lo que NO queremos: "Fanática del cine indie con buen gusto en directores"
-- Ejemplos de lo que SÍ queremos: "Probablemente tiene un journal donde escribe thoughts profundos a las 2am. El tipo de persona que prefiere conversaciones intensas sobre small talk. Definitivamente cancela planes para quedarse en pijama viendo películas."
+- Ejemplos de lo que SÍ queremos: "Probablemente tiene un diario donde escribe pensamientos profundos a las 2am. El tipo de persona que prefiere conversaciones intensas sobre charlas superficiales. Definitivamente cancela planes para quedarse en pijama viendo películas."
 
 GREEN FLAGS (Rasgos de personalidad POSITIVOS):
 - Identifica RASGOS DE CARÁCTER positivos inferidos de sus películas.
-- ¿Es empático? ¿Open-minded? ¿Emocionalmente inteligente? ¿Aventurero? ¿Leal?
+- ¿Es empático? ¿De mente abierta? ¿Emocionalmente inteligente? ¿Aventurero? ¿Leal?
 - Usa el cine como JUSTIFICACIÓN, pero habla del rasgo de personalidad.
 - Ejemplos:
   * MAL: "Aprecia el cine europeo" (muy obvio, solo habla de gustos)
-  * BIEN: "Tiene paciencia para la slow life y aprecia las cosas sutiles (probablemente por ver tanto Linklater)"
+  * BIEN: "Tiene paciencia para el ritmo lento y aprecia las cosas sutiles (probablemente por ver tanto Linklater)"
   * MAL: "Le gustan las películas de A24"
   * BIEN: "No tiene miedo de sentir cosas intensas y procesar emociones (esas películas indies no mienten)"
 
 RED FLAGS (Rasgos de personalidad PROBLEMÁTICOS):
-- Identifica PROBLEMAS DE PERSONALIDAD o patterns cuestionables.
-- ¿Es emocionalmente unavailable? ¿Pretencioso? ¿Tiene commitment issues? ¿Evita la vulnerabilidad?
+- Identifica PROBLEMAS DE PERSONALIDAD o patrones cuestionables.
+- ¿Es emocionalmente cerrado? ¿Pretencioso? ¿Tiene problemas de compromiso? ¿Evita la vulnerabilidad?
 - De nuevo, usa el cine como evidencia, pero habla del problema real.
 - Ejemplos:
   * MAL: "Solo ve películas de Nolan" (solo habla de gustos)
   * BIEN: "Probablemente explica cosas que no le preguntaron y dice 'actually' demasiado (síndrome Nolan fan)"
   * MAL: "Le gustan las películas tristes"
-  * BIEN: "Romanticiza su propia tristeza y probablemente dice 'nadie me entiende' unironically"
+  * BIEN: "Romanticiza su propia tristeza y probablemente dice 'nadie me entiende' sin ironía"
 
 FIRST DATE REACTIONS:
 - Describe COMPORTAMIENTOS EN LA CITA, no las películas que mencionaron.
-- ¿Cómo actuaría alguien con estos gustos en un date?
+- ¿Cómo actuaría alguien con estos gustos en una primera cita?
 - NO digas "Habló de X película" - muestra cómo se comportan basándote en su personalidad cinematográfica.
 - Ejemplos:
   * MAL: "Mencionó que le encanta Wes Anderson"
-  * BIEN: "Ordenó su café de forma súper específica y tomó foto antes de tomar. Very on brand."
+  * BIEN: "Ordenó su café de forma súper específica y tomó foto antes de tomar. Muy su estilo."
   * MAL: "Dijo que vio todas las de Bergman"
-  * BIEN: "Hizo contacto visual intenso y preguntó cosas existenciales. Intimidating pero intrigante."
-  * BIEN: "Lloró en medio de la conversación hablando de su niñez. Emotionally available king/queen."
+  * BIEN: "Hizo contacto visual intenso y preguntó cosas existenciales. Intimidante pero intrigante."
+  * BIEN: "Lloró en medio de la conversación hablando de su niñez. Emocionalmente disponible, sin duda."
 - Los @usernames pueden ser creativos: @coffeedate23, @normalviewer, @emotionallydamaged, etc.
 
 COMPATIBILIDAD:
 - 70% rasgos de personalidad, 30% gustos de cine.
 - NO digas "alguien que también ame X película"
 - Habla de QUÉ TIPO DE PERSONA los complementaría basándote en su personalidad inferida.
-- Considera: balance emocional, energy levels, profundidad vs. ligereza, introversión vs. extroversión.
+- Considera: balance emocional, niveles de energía, profundidad vs. ligereza, introversión vs. extroversión.
 - Ejemplos:
   * MAL: "Alguien que también ame el cine indie"
-  * BIEN: "Alguien que entienda tu need de procesar emociones en silencio, pero que también te saque a hacer cosas cuando estás demasiado in your head"
+  * BIEN: "Alguien que entienda tu necesidad de procesar emociones en silencio, pero que también te saque a hacer cosas cuando estás pensando de más"
 
 RECUERDA: El cine es la excusa. La personalidad es el punto. Solo JSON, sin formato markdown.`
         }]
