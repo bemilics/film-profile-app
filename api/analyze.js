@@ -5,10 +5,51 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { imageData } = req.body;
+    const { imageData, useMock } = req.body;
 
     if (!imageData) {
       return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    // MODO DEBUG: Solo en preview y development, nunca en production
+    const isProduction = process.env.VERCEL_ENV === 'production';
+    if (!isProduction && useMock) {
+      console.log('DEBUG MODE: Returning mock data (non-production environment)');
+
+      // Mock data para testing visual
+      const mockData = {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            mainCharacter: {
+              name: "Mia Dolan de La La Land",
+              description: "Eres la chica que llora con películas indie pero secretamente ama las comedias románticas mainstream. Tienes un pie en el cine de autor y otro en Hollywood."
+            },
+            bio: "Fanática del cine con criterio cuestionable pero divertido. Mezclas Wes Anderson con Marvel sin vergüenza. Tu Letterboxd es un mood board de personalidad: 50% pretentious, 50% guilty pleasures, 100% entretenido.",
+            greenFlags: [
+              "Aprecias tanto el slow cinema como las explosiones de Michael Bay",
+              "Das 5 estrellas a películas que técnicamente son malas pero te hacen feliz",
+              "Tu sección de favoritas tiene más diversidad que un festival de cine"
+            ],
+            redFlags: [
+              "Tienes la audacia de poner una película de Nolan en favoritas (qué original)",
+              "Viste 3 películas de A24 y ya te consideras cinéfila",
+              "Le diste 4 estrellas a una película solo porque el protagonista es guapo"
+            ],
+            compatibility: {
+              type: "Alguien que respete tu caos cinematográfico pero te desafíe",
+              description: "Necesitas a alguien que no te juzgue por llorar con Toy Story 3, pero que te haga ver películas fuera de tu zona de confort. Alguien que traiga palomitas a la proyección de 3 horas en blanco y negro que insistes en ver."
+            }
+          })
+        }]
+      };
+
+      return res.status(200).json(mockData);
+    }
+
+    // PRODUCTION: Siempre usa la API real
+    if (isProduction && useMock) {
+      console.log('Mock mode requested in production - ignoring and using real API');
     }
 
     // PASO 1: Usar Haiku para parsear la información de la imagen
