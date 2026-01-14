@@ -21,37 +21,37 @@ module.exports = async function handler(req, res) {
         content: [{
           type: 'text',
           text: JSON.stringify({
-            bio: "Fanática del cine con criterio cuestionable pero divertido. Mezclas Wes Anderson con Marvel sin vergüenza. Tu Letterboxd es un mood board de personalidad: 50% pretentious, 50% guilty pleasures, 100% entretenido.",
+            bio: "El tipo de persona que tiene opinions fuertes sobre cosas random. Probablemente cancela planes para quedarse en casa, pero cuando sale es la persona más interesante de la conversación. Definitivamente tiene un Spotify playlist para cada mood existencial.",
             greenFlags: [
-              "Aprecias tanto el slow cinema como las explosiones de Michael Bay",
-              "Das 5 estrellas a películas que técnicamente son malas pero te hacen feliz",
-              "Tu sección de favoritas tiene más diversidad que un festival de cine"
+              "Emocionalmente disponible y no le da miedo sentir cosas intensas",
+              "Tiene paciencia para las cosas buenas y aprecia los detalles sutiles de la vida",
+              "Open-minded y dispuesto a probar cosas nuevas sin juzgar inmediatamente"
             ],
             redFlags: [
-              "Tienes la audacia de poner una película de Nolan en favoritas (qué original)",
-              "Viste 3 películas de A24 y ya te consideras cinéfila",
-              "Le diste 4 estrellas a una película solo porque el protagonista es guapo"
+              "Probablemente romanticiza su propia complejidad emocional un poco demasiado",
+              "Tiene tendencia a explicar cosas que nadie preguntó (síndrome de 'actually...')",
+              "Evita confrontación directa y prefiere procesar todo internamente primero"
             ],
             firstDateReactions: [
               {
-                user: "@coffeesnob",
-                comment: "Explicó la diferencia entre 35mm y digital por 15 minutos. Pretencioso pero de forma adorable.",
+                user: "@datenight_chronicles",
+                comment: "Hizo contacto visual intenso toda la noche y preguntó sobre mi relación con mis papás. Deep pero real.",
+                rating: "⭐⭐⭐⭐½"
+              },
+              {
+                user: "@just_vibing",
+                comment: "Ordenó por nosotros dos sin preguntar pero acertó perfecto. Confident energy.",
                 rating: "⭐⭐⭐⭐"
               },
               {
-                user: "@normalviewer",
-                comment: "Lloró con Paddington 2. Sin ironía. Genuinas lágrimas. Definitivamente keeper material.",
+                user: "@overthinker_supreme",
+                comment: "Se emocionó hablando de su childhood y casi llora. Vulnerability is hot tbh.",
                 rating: "⭐⭐⭐⭐⭐"
-              },
-              {
-                user: "@filmcritichottie",
-                comment: "Dijo que Nolan es 'mid' en el primer date. Marry me challenge.",
-                rating: "⭐⭐⭐⭐½"
               }
             ],
             compatibility: {
-              type: "Alguien que respete tu caos cinematográfico pero te desafíe",
-              description: "Necesitas a alguien que no te juzgue por llorar con Toy Story 3, pero que te haga ver películas fuera de tu zona de confort. Alguien que traiga palomitas a la proyección de 3 horas en blanco y negro que insistes en ver."
+              type: "Alguien que te ground cuando estás demasiado in your head",
+              description: "Necesitas a alguien que entienda tu need de introspección pero que también te recuerde que la vida pasa afuera de tu cabeza. Alguien patient que no te apure pero tampoco te deje quedarte stuck en overthinking mode."
             }
           })
         }]
@@ -186,49 +186,63 @@ IMPORTANTE: Responde SOLO con un objeto JSON, sin markdown, sin explicaciones, s
   }
 }
 
-GUÍA DE TONO Y CONTENIDO:
+GUÍA GENERAL:
 - Tono: Sarcástico, Gen Z, chistoso pero no cruel. Insightful y específico, no genérico.
-- Sé ESPECÍFICO con las películas mencionadas. Usa nombres, directores, géneros concretos.
-- Busca patterns interesantes: géneros, directores, épocas, temas recurrentes.
-- Señala contradicciones o ironías entre favoritas y recientes.
-- Hot takes basados en las películas específicas del usuario.
+- USA LAS PELÍCULAS COMO VENTANA A LA PERSONALIDAD, no como el tema principal.
+- El cine revela rasgos de personalidad: alguien que ve películas tristes todo el tiempo probablemente es introspectivo, alguien que solo ve blockbusters tal vez evita la profundidad emocional, etc.
+- Infiere personalidad, hábitos, valores, comportamientos basándote en sus elecciones cinematográficas.
 
 BIO:
-- Debe capturar la esencia cinematográfica del usuario.
-- Menciona patterns específicos que notaste en su perfil.
-- Hazlo personal y único, no genérico.
+- ENFÓCATE EN PERSONALIDAD, NO EN GUSTOS DE CINE.
+- Pregúntate: ¿Qué tipo de persona es basándote en lo que ve?
+- ¿Qué le gusta hacer fuera del cine? (infiere: ¿es social? ¿introspectivo? ¿aventurero? ¿homebody?)
+- ¿Cómo es en relaciones? ¿En el día a día? ¿Qué valora?
+- Puedes mencionar el cine LEVEMENTE como justificación, pero el foco es la persona.
+- Ejemplos de lo que NO queremos: "Fanática del cine indie con buen gusto en directores"
+- Ejemplos de lo que SÍ queremos: "Probablemente tiene un journal donde escribe thoughts profundos a las 2am. El tipo de persona que prefiere conversaciones intensas sobre small talk. Definitivamente cancela planes para quedarse en pijama viendo películas."
 
-GREEN FLAGS:
-- Resalta aspectos positivos de su gusto cinematográfico.
-- Sé específico: menciona géneros, directores, o tipos de películas concretas.
-- Pueden ser sinceros o irónicos, pero siempre con fundamento.
+GREEN FLAGS (Rasgos de personalidad POSITIVOS):
+- Identifica RASGOS DE CARÁCTER positivos inferidos de sus películas.
+- ¿Es empático? ¿Open-minded? ¿Emocionalmente inteligente? ¿Aventurero? ¿Leal?
+- Usa el cine como JUSTIFICACIÓN, pero habla del rasgo de personalidad.
+- Ejemplos:
+  * MAL: "Aprecia el cine europeo" (muy obvio, solo habla de gustos)
+  * BIEN: "Tiene paciencia para la slow life y aprecia las cosas sutiles (probablemente por ver tanto Linklater)"
+  * MAL: "Le gustan las películas de A24"
+  * BIEN: "No tiene miedo de sentir cosas intensas y procesar emociones (esas películas indies no mienten)"
 
-RED FLAGS:
-- Señala contradicciones, pretentiousness, o aspectos cuestionables con humor.
-- Deben ser observations reales basadas en las películas, no insultos genéricos.
-- El humor debe venir de la especificidad.
+RED FLAGS (Rasgos de personalidad PROBLEMÁTICOS):
+- Identifica PROBLEMAS DE PERSONALIDAD o patterns cuestionables.
+- ¿Es emocionalmente unavailable? ¿Pretencioso? ¿Tiene commitment issues? ¿Evita la vulnerabilidad?
+- De nuevo, usa el cine como evidencia, pero habla del problema real.
+- Ejemplos:
+  * MAL: "Solo ve películas de Nolan" (solo habla de gustos)
+  * BIEN: "Probablemente explica cosas que no le preguntaron y dice 'actually' demasiado (síndrome Nolan fan)"
+  * MAL: "Le gustan las películas tristes"
+  * BIEN: "Romanticiza su propia tristeza y probablemente dice 'nadie me entiende' unironically"
 
 FIRST DATE REACTIONS:
-- Son reviews de "dates ficticias previas" con este usuario.
-- 3 reviews de diferentes personas (@usuario puede ser cualquier username creativo).
-- Cada review debe:
-  * Mencionar algo específico que pasó en el "date" relacionado con películas
-  * Tener personalidad propia (diferentes perspectivas)
-  * Ser divertida pero honesta
-  * Usar ratings de estrellas (⭐) - varía entre 3-5 estrellas, puede usar ½
-- Ejemplos de buenos comments:
-  * "Explained the Kuleshov effect on date 1. Pretencioso pero hot somehow."
-  * "Cried during Paddington 2. No ironía, genuinas lágrimas. Keeper."
-  * "Said their comfort movie was Synecdoche New York. Red flag or green flag? Still deciding."
-- Los @usernames pueden ser creativos: @filmsnob420, @normalviewer, @a24stan, etc.
+- Describe COMPORTAMIENTOS EN LA CITA, no las películas que mencionaron.
+- ¿Cómo actuaría alguien con estos gustos en un date?
+- NO digas "Habló de X película" - muestra cómo se comportan basándote en su personalidad cinematográfica.
+- Ejemplos:
+  * MAL: "Mencionó que le encanta Wes Anderson"
+  * BIEN: "Ordenó su café de forma súper específica y tomó foto antes de tomar. Very on brand."
+  * MAL: "Dijo que vio todas las de Bergman"
+  * BIEN: "Hizo contacto visual intenso y preguntó cosas existenciales. Intimidating pero intrigante."
+  * BIEN: "Lloró en medio de la conversación hablando de su niñez. Emotionally available king/queen."
+- Los @usernames pueden ser creativos: @coffeedate23, @normalviewer, @emotionallydamaged, etc.
 
 COMPATIBILIDAD:
-- NO digas "alguien que también ame X" (muy obvio y aburrido).
-- PIENSA EN COMPLEMENTACIÓN: ¿Qué tipo de persona los complementaría?
-- Considera: alguien que balance sus gustos, que traiga algo nuevo, que entienda su vibe pero lo desafíe.
-- Ejemplo: Si solo ven películas tristes → alguien que los convenza de ver una comedia ocasional.
+- 70% rasgos de personalidad, 30% gustos de cine.
+- NO digas "alguien que también ame X película"
+- Habla de QUÉ TIPO DE PERSONA los complementaría basándote en su personalidad inferida.
+- Considera: balance emocional, energy levels, profundidad vs. ligereza, introversión vs. extroversión.
+- Ejemplos:
+  * MAL: "Alguien que también ame el cine indie"
+  * BIEN: "Alguien que entienda tu need de procesar emociones en silencio, pero que también te saque a hacer cosas cuando estás demasiado in your head"
 
-RECUERDA: Solo JSON, sin formato markdown. Mobile-responsive: todo debe ser legible en celular.`
+RECUERDA: El cine es la excusa. La personalidad es el punto. Solo JSON, sin formato markdown.`
         }]
       })
     });
