@@ -19,6 +19,41 @@
                 height: 960px;
             }
         }
+        .slide-container {
+            position: relative;
+            overflow: hidden;
+        }
+        .slide-content {
+            touch-action: pan-y;
+            animation: slideIn 0.4s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .slide-nudge {
+            animation: slideNudge 1.5s ease-in-out 3;
+        }
+        @keyframes slideNudge {
+            0%, 100% {
+                transform: translateX(0);
+            }
+            25% {
+                transform: translateX(-10px);
+            }
+            75% {
+                transform: translateX(0);
+            }
+        }
+        .progress-bar {
+            transition: width 0.1s linear;
+        }
     </style>
 </head>
 <body class="bg-[#0f1419] min-h-screen">
@@ -38,12 +73,72 @@
             loading: false,
             result: null,
             error: null,
-            useMock: false
+            useMock: false,
+            currentSlide: 0,
+            autoSlideTimer: null,
+            swipeIndicatorTimer: null,
+            touchStartX: 0,
+            touchEndX: 0,
+            autoSlideEnabled: true,
+            hasCompletedCycle: false,
+            hasScrolledToResults: false,
+            wasRestoredFromStorage: false
         };
 
         function setState(updates) {
             state = { ...state, ...updates };
             render();
+            // Save to localStorage when result changes
+            if (updates.result !== undefined) {
+                saveToLocalStorage();
+            }
+        }
+
+        // LocalStorage functions
+        const STORAGE_KEY = 'cinematch_results';
+
+        function saveToLocalStorage() {
+            try {
+                const dataToSave = {
+                    result: state.result,
+                    image: state.image,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    // Only load if less than 7 days old
+                    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+                    if (Date.now() - data.timestamp < sevenDays) {
+                        return {
+                            result: data.result,
+                            image: data.image
+                        };
+                    } else {
+                        // Clear old data
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+            }
+            return null;
+        }
+
+        function clearLocalStorage() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (error) {
+                console.error('Error clearing localStorage:', error);
+            }
         }
 
         function handleImageUpload(e) {
@@ -91,7 +186,7 @@
                 analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
                 const analysis = JSON.parse(analysisText);
-                setState({ result: analysis, loading: false });
+                setState({ result: analysis, loading: false, wasRestoredFromStorage: false });
             } catch (err) {
                 console.error('Error:', err);
                 setState({
@@ -126,7 +221,298 @@
         }
 
         function resetApp() {
-            setState({ result: null, image: null });
+            stopAutoSlide();
+            stopSwipeIndicatorTimer();
+            clearLocalStorage();
+            setState({
+                result: null,
+                image: null,
+                currentSlide: 0,
+                autoSlideEnabled: true,
+                hasCompletedCycle: false,
+                hasScrolledToResults: false,
+                wasRestoredFromStorage: false
+            });
+        }
+
+        // Slide navigation functions - tiempos mucho más largos
+        const SLIDE_DURATIONS = [15000, 20000, 18000, 25000, 25000]; // Duration for each slide in ms
+        const TOTAL_SLIDES = 5;
+
+        function nextSlide() {
+            stopSwipeIndicatorTimer();
+            if (state.currentSlide < TOTAL_SLIDES - 1) {
+                setState({
+                    currentSlide: state.currentSlide + 1
+                });
+                if (state.autoSlideEnabled) {
+                    startAutoSlide();
+                }
+            } else {
+                // Reached the end, disable auto-slide
+                setState({ hasCompletedCycle: true, autoSlideEnabled: false });
+                stopAutoSlide();
+            }
+        }
+
+        function prevSlide() {
+            stopSwipeIndicatorTimer();
+            if (state.currentSlide > 0) {
+                // Going backwards disables auto-slide
+                setState({
+                    currentSlide: state.currentSlide - 1,
+                    autoSlideEnabled: false
+                });
+                stopAutoSlide();
+            }
+        }
+
+        function goToSlide(index) {
+            stopSwipeIndicatorTimer();
+            if (index >= 0 && index < TOTAL_SLIDES) {
+                setState({
+                    currentSlide: index
+                });
+                startAutoSlide();
+            }
+        }
+
+        function startAutoSlide() {
+            if (!state.autoSlideEnabled) return;
+
+            stopAutoSlide();
+            stopSwipeIndicatorTimer();
+
+            const duration = SLIDE_DURATIONS[state.currentSlide];
+            const indicatorDelay = Math.max(3000, duration - 5000); // Mostrar 5s antes del autoswipe, mínimo después de 3s
+
+            // Solo mostrar nudge si NO es la última slide
+            if (state.currentSlide < TOTAL_SLIDES - 1) {
+                // Mostrar nudge antes del autoswipe
+                state.swipeIndicatorTimer = setTimeout(() => {
+                    const slideContent = document.querySelector('.slide-content');
+                    if (slideContent) {
+                        slideContent.classList.add('slide-nudge');
+                        // Remover la clase después de la animación (4.5s = 1.5s * 3 repeticiones)
+                        setTimeout(() => {
+                            slideContent.classList.remove('slide-nudge');
+                        }, 4500);
+                    }
+                }, indicatorDelay);
+
+                // Auto-slide después del tiempo completo
+                state.autoSlideTimer = setTimeout(() => {
+                    if (state.currentSlide < TOTAL_SLIDES - 1 && state.autoSlideEnabled) {
+                        nextSlide();
+                    }
+                }, duration);
+            }
+        }
+
+        function stopAutoSlide() {
+            if (state.autoSlideTimer) {
+                clearTimeout(state.autoSlideTimer);
+                state.autoSlideTimer = null;
+            }
+        }
+
+        function stopSwipeIndicatorTimer() {
+            if (state.swipeIndicatorTimer) {
+                clearTimeout(state.swipeIndicatorTimer);
+                state.swipeIndicatorTimer = null;
+            }
+        }
+
+        function handleTouchStart(e) {
+            state.touchStartX = e.touches[0].clientX;
+            stopAutoSlide();
+        }
+
+        function handleTouchMove(e) {
+            state.touchEndX = e.touches[0].clientX;
+        }
+
+        function handleTouchEnd() {
+            const swipeThreshold = 50;
+            const diff = state.touchStartX - state.touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                // User swiped manually - disable auto-slide
+                stopSwipeIndicatorTimer();
+                setState({ autoSlideEnabled: false });
+                if (diff > 0) {
+                    // Swipe left - next slide
+                    nextSlide();
+                } else {
+                    // Swipe right - previous slide
+                    prevSlide();
+                }
+            } else {
+                // Resume auto-slide if no swipe detected
+                if (state.autoSlideEnabled) {
+                    startAutoSlide();
+                }
+            }
+        }
+
+        function getSlideContent(slideIndex, result) {
+            switch(slideIndex) {
+                case 0: // Arquetipo + Bio
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <h2 class="text-3xl font-bold mb-2 text-[#ff006e]">CINEMATCH</h2>
+                                <p class="text-sm text-gray-400">Tu Dating Profile Cinematográfico</p>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e]">
+                                <div class="text-center mb-4">
+                                    <div class="text-4xl mb-2">${result.archetype?.emoji || '🎭'}</div>
+                                    <h3 class="text-2xl font-bold text-[#ffd93d] mb-1">
+                                        ${result.archetype?.title || 'TU ARQUETIPO'}
+                                    </h3>
+                                    <p class="text-xs text-gray-400 italic">
+                                        (${result.archetype?.subtitle || result.archetype?.title || 'The Archetype'})
+                                    </p>
+                                </div>
+
+                                <p class="text-sm leading-relaxed text-gray-200 mb-4">
+                                    ${result.archetype?.description || result.bio}
+                                </p>
+
+                                ${result.archetype?.rarity ? `
+                                    <div class="text-center pt-4 border-t border-[#445566]">
+                                        <p class="text-xs text-gray-400">Rareza:</p>
+                                        <p class="text-lg font-bold text-[#ff006e]">${result.archetype.rarity}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+
+                case 1: // First Date Reactions
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">💬</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">FIRST DATE REACTIONS</h3>
+                                <p class="text-xs text-gray-400 mt-1">Lo que dijeron después de salir contigo</p>
+                            </div>
+
+                            <div class="space-y-4">
+                                ${(result.firstDateReactions || []).map(reaction => `
+                                    <div class="bg-[#2c3440] rounded-xl p-4 border border-[#445566]">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-sm font-semibold text-[#ffd93d]">${reaction.user}</span>
+                                            <span class="text-sm text-[#ff006e]">${reaction.rating}</span>
+                                        </div>
+                                        <p class="text-sm leading-relaxed text-gray-300">"${reaction.comment}"</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+
+                case 2: // Love Languages
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">❤️</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">CÓMO AMAS</h3>
+                                <p class="text-xs text-gray-400 mt-1">Según tu Letterboxd</p>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#ff006e]">
+                                    <h4 class="text-sm font-bold text-[#ff006e] mb-3 flex items-center gap-2">
+                                        <span>💘</span> EN CITAS:
+                                    </h4>
+                                    <p class="text-sm leading-relaxed text-gray-200">
+                                        ${result.loveLanguages?.dating || 'Tu forma de coquetear involucra referencias cinematográficas que solo 3 personas van a entender.'}
+                                    </p>
+                                </div>
+
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#445566]">
+                                    <h4 class="text-sm font-bold text-[#ffd93d] mb-3 flex items-center gap-2">
+                                        <span>🤝</span> EN GENERAL:
+                                    </h4>
+                                    <p class="text-sm leading-relaxed text-gray-200">
+                                        ${result.loveLanguages?.general || 'Expresas afecto a través de experiencias compartidas, no palabras vacías.'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                case 3: // Best/Worst Matches
+                    return `
+                        <div class="h-full flex flex-col justify-center overflow-y-auto">
+                            <div class="text-center mb-4">
+                                <div class="text-5xl mb-2">💘</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">COMPATIBILITY</h3>
+                            </div>
+
+                            <!-- Best Matches -->
+                            <div class="mb-4">
+                                <h4 class="text-lg font-bold text-[#00d9a3] mb-3 flex items-center gap-2">
+                                    <span>✨</span> BEST MATCHES
+                                </h4>
+                                <div class="space-y-3">
+                                    ${(result.bestMatches || []).map(match => `
+                                        <div class="bg-[#2c3440] rounded-xl p-4 border border-[#00d9a3]">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <h5 class="text-sm font-bold text-white">${match.emoji || '🎭'} ${match.type}</h5>
+                                                <span class="text-sm font-bold text-[#00d9a3]">${match.percentage || '89%'}</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 mb-1">→ ${match.dating}</p>
+                                            <p class="text-xs text-gray-400">→ ${match.general}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- Worst Matches -->
+                            <div>
+                                <h4 class="text-lg font-bold text-[#ff4757] mb-3 flex items-center gap-2">
+                                    <span>💔</span> WORST MATCHES
+                                </h4>
+                                <div class="space-y-3">
+                                    ${(result.worstMatches || []).map(match => `
+                                        <div class="bg-[#2c3440] rounded-xl p-4 border border-[#ff4757]">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <h5 class="text-sm font-bold text-white">${match.emoji || '🎪'} ${match.type}</h5>
+                                                <span class="text-sm font-bold text-[#ff4757]">${match.percentage || '9%'}</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 mb-1">→ ${match.dating}</p>
+                                            <p class="text-xs text-gray-400">→ ${match.general}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                case 4: // Veredicto Final
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">📋</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">VEREDICTO FINAL</h3>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border border-[#445566] overflow-y-auto max-h-[600px]">
+                                ${(result.verdict || []).map(paragraph => `
+                                    <p class="text-sm leading-relaxed text-gray-200 mb-4 last:mb-0">
+                                        ${paragraph}
+                                    </p>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+
+                default:
+                    return '<div>Slide no encontrada</div>';
+            }
         }
 
         function render() {
@@ -217,119 +603,60 @@
                     </ol>
                 </div>
                 ` : `
-                <!-- Result Card -->
+                <!-- Result Card with Slides -->
                 <div class="space-y-6">
                     <div
                         id="result-card"
-                        class="story-card bg-[#14181c] rounded-3xl shadow-2xl overflow-hidden mx-auto border border-[#2c3440]"
+                        class="story-card bg-[#14181c] rounded-3xl shadow-2xl overflow-hidden mx-auto border border-[#2c3440] slide-container"
+                        ontouchstart="handleTouchStart(event)"
+                        ontouchmove="handleTouchMove(event)"
+                        ontouchend="handleTouchEnd()"
                     >
-                        <div class="h-full flex flex-col p-4 text-white overflow-hidden">
-                            <!-- Header -->
-                            <div class="text-center mb-2 flex-shrink-0">
-                                <h2 class="text-2xl font-bold mb-0.5 text-[#ff006e]">CINEMATCH</h2>
-                                <p class="text-xs text-gray-400">Tu Dating Profile</p>
-                            </div>
-
-                            <!-- Bio -->
-                            <div class="bg-[#2c3440] rounded-xl p-2.5 mb-1.5 flex-shrink-0 border border-[#445566]">
-                                <div class="flex items-center gap-1.5 mb-1">
-                                    <div class="text-base">📝</div>
-                                    <h4 class="text-xs font-bold text-[#ffd93d]">BIO</h4>
-                                </div>
-                                <p class="text-[10px] leading-tight text-gray-300">
-                                    ${state.result.bio}
-                                </p>
-                            </div>
-
-                            <!-- Flags Section -->
-                            <div class="grid grid-cols-2 gap-1.5 mb-1.5 flex-shrink-0">
-                                <!-- Green Flags -->
-                                <div class="bg-[#2c3440] rounded-xl p-2 border border-[#00d9a3]">
-                                    <h4 class="text-[11px] font-bold mb-1 flex items-center gap-0.5 text-[#00d9a3]">
-                                        💚 GREEN FLAGS
-                                    </h4>
-                                    <div class="space-y-0.5">
-                                        ${state.result.greenFlags.map(flag => `
-                                            <div class="flex items-start gap-1">
-                                                <span class="text-[8px] mt-0.5 flex-shrink-0 text-[#00d9a3]">•</span>
-                                                <p class="text-[8px] leading-tight text-gray-300">${flag}</p>
-                                            </div>
-                                        `).join('')}
+                        <div class="h-full flex flex-col text-white relative">
+                            <!-- Progress Indicators -->
+                            <div class="flex gap-1 p-2 flex-shrink-0">
+                                ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
+                                    <div class="flex-1 h-0.5 bg-[#2c3440] rounded-full overflow-hidden">
+                                        <div class="progress-bar h-full bg-[#ff006e] ${i < state.currentSlide ? 'w-full' : i === state.currentSlide ? 'w-0' : 'w-0'}"></div>
                                     </div>
-                                </div>
-
-                                <!-- Red Flags -->
-                                <div class="bg-[#2c3440] rounded-xl p-2 border border-[#ff4757]">
-                                    <h4 class="text-[11px] font-bold mb-1 flex items-center gap-0.5 text-[#ff4757]">
-                                        🚩 RED FLAGS
-                                    </h4>
-                                    <div class="space-y-0.5">
-                                        ${state.result.redFlags.map(flag => `
-                                            <div class="flex items-start gap-1">
-                                                <span class="text-[8px] mt-0.5 flex-shrink-0 text-[#ff4757]">•</span>
-                                                <p class="text-[8px] leading-tight text-gray-300">${flag}</p>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
+                                `).join('')}
                             </div>
 
-                            <!-- First Date Reactions -->
-                            <div class="bg-[#2c3440] rounded-xl p-2.5 mb-1.5 flex-shrink-0 border border-[#445566]">
-                                <div class="flex items-center gap-1.5 mb-1.5">
-                                    <div class="text-base">💬</div>
-                                    <h4 class="text-xs font-bold text-[#ffd93d]">FIRST DATE REACTIONS</h4>
-                                </div>
-                                <div class="space-y-1">
-                                    ${state.result.firstDateReactions.map(reaction => `
-                                        <div class="bg-[#1a1f26] rounded-lg p-1.5 border border-[#2c3440]">
-                                            <div class="flex items-center justify-between mb-0.5">
-                                                <span class="text-[9px] font-semibold text-[#ffd93d]">${reaction.user}</span>
-                                                <span class="text-[9px] text-[#ff006e]">${reaction.rating}</span>
-                                            </div>
-                                            <p class="text-[8px] leading-tight text-gray-300">"${reaction.comment}"</p>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-
-                            <!-- Compatibility -->
-                            <div class="bg-[#2c3440] rounded-xl p-2.5 flex-shrink-0 border border-[#ff006e]">
-                                <div class="flex items-start gap-1.5 mb-1">
-                                    <div class="text-lg flex-shrink-0">💘</div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-[9px] text-gray-400 mb-0.5">WHO'D SWIPE RIGHT:</p>
-                                        <h3 class="text-xs font-bold leading-tight text-[#ff006e]">
-                                            ${state.result.compatibility.type}
-                                        </h3>
-                                    </div>
-                                </div>
-                                <p class="text-[10px] leading-tight text-gray-300">
-                                    ${state.result.compatibility.description}
-                                </p>
+                            <!-- Slide Content -->
+                            <div class="flex-1 overflow-hidden p-4 slide-content">
+                                ${getSlideContent(state.currentSlide, state.result)}
                             </div>
 
                             <!-- Footer -->
-                            <div class="text-center mt-1.5 flex-shrink-0">
+                            <div class="text-center py-2 flex-shrink-0">
                                 <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex gap-4">
-                        <button
-                            onclick="downloadResult()"
-                            class="flex-1 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
-                        >
-                            📱 Descargar para Stories
-                        </button>
-                        <button
-                            onclick="resetApp()"
-                            class="flex-1 bg-[#2c3440] text-gray-300 py-4 rounded-xl font-semibold text-lg hover:bg-[#3a4554] transition-all border border-[#445566]"
-                        >
-                            🔄 Hacer Otro
-                        </button>
+                    <div class="space-y-4">
+                        ${state.wasRestoredFromStorage ? `
+                            <div class="bg-[#2c3440] border border-[#ffd93d] rounded-xl p-3 text-center">
+                                <p class="text-sm text-[#ffd93d]">
+                                    ✨ Tus resultados fueron restaurados
+                                </p>
+                            </div>
+                        ` : ''}
+                        <div class="flex gap-4">
+                            <button
+                                onclick="downloadResult()"
+                                class="flex-1 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
+                            >
+                                📱 Descargar para Stories
+                            </button>
+                            <button
+                                onclick="resetApp()"
+                                class="flex-1 bg-[#2c3440] text-gray-300 py-4 rounded-xl font-semibold text-lg hover:bg-[#3a4554] transition-all border border-[#445566]"
+                            >
+                                🔄 Hacer Otro
+                            </button>
+                        </div>
                     </div>
                 </div>
                 `}
@@ -340,6 +667,30 @@
             if (fileInput) {
                 fileInput.addEventListener('change', handleImageUpload);
             }
+
+            // Start auto-slide when result is shown
+            if (state.result && !state.autoSlideTimer) {
+                startAutoSlide();
+            }
+
+            // Auto-scroll to center results when they appear (only once)
+            if (state.result && !state.hasScrolledToResults) {
+                const resultCard = document.getElementById('result-card');
+                if (resultCard) {
+                    state.hasScrolledToResults = true;
+                    setTimeout(() => {
+                        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+            }
+        }
+
+        // Load saved data on startup
+        const savedData = loadFromLocalStorage();
+        if (savedData) {
+            state.result = savedData.result;
+            state.image = savedData.image;
+            state.wasRestoredFromStorage = true;
         }
 
         // Initial render
