@@ -19,6 +19,26 @@
                 height: 960px;
             }
         }
+        .slide-container {
+            position: relative;
+            overflow: hidden;
+        }
+        .slide {
+            transition: transform 0.3s ease-out;
+        }
+        .coach-mark {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .progress-bar {
+            transition: width 0.1s linear;
+        }
+        .slide-content {
+            touch-action: pan-y;
+        }
     </style>
 </head>
 <body class="bg-[#0f1419] min-h-screen">
@@ -38,7 +58,12 @@
             loading: false,
             result: null,
             error: null,
-            useMock: false
+            useMock: false,
+            currentSlide: 0,
+            showCoachMarks: true,
+            autoSlideTimer: null,
+            touchStartX: 0,
+            touchEndX: 0
         };
 
         function setState(updates) {
@@ -126,7 +151,251 @@
         }
 
         function resetApp() {
-            setState({ result: null, image: null });
+            setState({ result: null, image: null, currentSlide: 0, showCoachMarks: true });
+            stopAutoSlide();
+        }
+
+        // Slide navigation functions
+        const SLIDE_DURATIONS = [8000, 10000, 8000, 12000, 12000]; // Duration for each slide in ms
+        const TOTAL_SLIDES = 5;
+
+        function nextSlide() {
+            if (state.currentSlide < TOTAL_SLIDES - 1) {
+                setState({
+                    currentSlide: state.currentSlide + 1,
+                    showCoachMarks: false
+                });
+                startAutoSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (state.currentSlide > 0) {
+                setState({
+                    currentSlide: state.currentSlide - 1,
+                    showCoachMarks: false
+                });
+                startAutoSlide();
+            }
+        }
+
+        function goToSlide(index) {
+            if (index >= 0 && index < TOTAL_SLIDES) {
+                setState({
+                    currentSlide: index,
+                    showCoachMarks: false
+                });
+                startAutoSlide();
+            }
+        }
+
+        function startAutoSlide() {
+            stopAutoSlide();
+            const duration = SLIDE_DURATIONS[state.currentSlide];
+
+            state.autoSlideTimer = setTimeout(() => {
+                if (state.currentSlide < TOTAL_SLIDES - 1) {
+                    nextSlide();
+                }
+            }, duration);
+        }
+
+        function stopAutoSlide() {
+            if (state.autoSlideTimer) {
+                clearTimeout(state.autoSlideTimer);
+                state.autoSlideTimer = null;
+            }
+        }
+
+        function handleTouchStart(e) {
+            state.touchStartX = e.touches[0].clientX;
+            stopAutoSlide();
+        }
+
+        function handleTouchMove(e) {
+            state.touchEndX = e.touches[0].clientX;
+        }
+
+        function handleTouchEnd() {
+            const swipeThreshold = 50;
+            const diff = state.touchStartX - state.touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swipe left - next slide
+                    nextSlide();
+                } else {
+                    // Swipe right - previous slide
+                    prevSlide();
+                }
+            } else {
+                // Resume auto-slide if no swipe detected
+                startAutoSlide();
+            }
+        }
+
+        function dismissCoachMarks() {
+            setState({ showCoachMarks: false });
+        }
+
+        function getSlideContent(slideIndex, result) {
+            switch(slideIndex) {
+                case 0: // Arquetipo + Bio
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <h2 class="text-3xl font-bold mb-2 text-[#ff006e]">CINEMATCH</h2>
+                                <p class="text-sm text-gray-400">Tu Dating Profile Cinematográfico</p>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e]">
+                                <div class="text-center mb-4">
+                                    <div class="text-4xl mb-2">${result.archetype?.emoji || '🎭'}</div>
+                                    <h3 class="text-2xl font-bold text-[#ffd93d] mb-1">
+                                        ${result.archetype?.title || 'TU ARQUETIPO'}
+                                    </h3>
+                                    <p class="text-xs text-gray-400 italic">
+                                        (${result.archetype?.subtitle || result.archetype?.title || 'The Archetype'})
+                                    </p>
+                                </div>
+
+                                <p class="text-sm leading-relaxed text-gray-200 mb-4">
+                                    ${result.archetype?.description || result.bio}
+                                </p>
+
+                                ${result.archetype?.rarity ? `
+                                    <div class="text-center pt-4 border-t border-[#445566]">
+                                        <p class="text-xs text-gray-400">Rareza:</p>
+                                        <p class="text-lg font-bold text-[#ff006e]">${result.archetype.rarity}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+
+                case 1: // First Date Reactions
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">💬</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">FIRST DATE REACTIONS</h3>
+                                <p class="text-xs text-gray-400 mt-1">Lo que dijeron después de salir contigo</p>
+                            </div>
+
+                            <div class="space-y-4">
+                                ${(result.firstDateReactions || []).map(reaction => `
+                                    <div class="bg-[#2c3440] rounded-xl p-4 border border-[#445566]">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-sm font-semibold text-[#ffd93d]">${reaction.user}</span>
+                                            <span class="text-sm text-[#ff006e]">${reaction.rating}</span>
+                                        </div>
+                                        <p class="text-sm leading-relaxed text-gray-300">"${reaction.comment}"</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+
+                case 2: // Love Languages
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">❤️</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">CÓMO AMAS</h3>
+                                <p class="text-xs text-gray-400 mt-1">Según tu Letterboxd</p>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#ff006e]">
+                                    <h4 class="text-sm font-bold text-[#ff006e] mb-3 flex items-center gap-2">
+                                        <span>💘</span> EN CITAS:
+                                    </h4>
+                                    <p class="text-sm leading-relaxed text-gray-200">
+                                        ${result.loveLanguages?.dating || 'Tu forma de coquetear involucra referencias cinematográficas que solo 3 personas van a entender.'}
+                                    </p>
+                                </div>
+
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#445566]">
+                                    <h4 class="text-sm font-bold text-[#ffd93d] mb-3 flex items-center gap-2">
+                                        <span>🤝</span> EN GENERAL:
+                                    </h4>
+                                    <p class="text-sm leading-relaxed text-gray-200">
+                                        ${result.loveLanguages?.general || 'Expresas afecto a través de experiencias compartidas, no palabras vacías.'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                case 3: // Best/Worst Matches
+                    return `
+                        <div class="h-full flex flex-col justify-center overflow-y-auto">
+                            <div class="text-center mb-4">
+                                <div class="text-5xl mb-2">💘</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">COMPATIBILITY</h3>
+                            </div>
+
+                            <!-- Best Matches -->
+                            <div class="mb-4">
+                                <h4 class="text-lg font-bold text-[#00d9a3] mb-3 flex items-center gap-2">
+                                    <span>✨</span> BEST MATCHES
+                                </h4>
+                                <div class="space-y-3">
+                                    ${(result.bestMatches || []).map(match => `
+                                        <div class="bg-[#2c3440] rounded-xl p-4 border border-[#00d9a3]">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <h5 class="text-sm font-bold text-white">${match.emoji || '🎭'} ${match.type}</h5>
+                                                <span class="text-sm font-bold text-[#00d9a3]">${match.percentage || '89%'}</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 mb-1">→ ${match.dating}</p>
+                                            <p class="text-xs text-gray-400">→ ${match.general}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- Worst Matches -->
+                            <div>
+                                <h4 class="text-lg font-bold text-[#ff4757] mb-3 flex items-center gap-2">
+                                    <span>💔</span> WORST MATCHES
+                                </h4>
+                                <div class="space-y-3">
+                                    ${(result.worstMatches || []).map(match => `
+                                        <div class="bg-[#2c3440] rounded-xl p-4 border border-[#ff4757]">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <h5 class="text-sm font-bold text-white">${match.emoji || '🎪'} ${match.type}</h5>
+                                                <span class="text-sm font-bold text-[#ff4757]">${match.percentage || '9%'}</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 mb-1">→ ${match.dating}</p>
+                                            <p class="text-xs text-gray-400">→ ${match.general}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                case 4: // Veredicto Final
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">📋</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">VEREDICTO FINAL</h3>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border border-[#445566] overflow-y-auto max-h-[600px]">
+                                ${(result.verdict || []).map(paragraph => `
+                                    <p class="text-sm leading-relaxed text-gray-200 mb-4 last:mb-0">
+                                        ${paragraph}
+                                    </p>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+
+                default:
+                    return '<div>Slide no encontrada</div>';
+            }
         }
 
         function render() {
@@ -217,100 +486,63 @@
                     </ol>
                 </div>
                 ` : `
-                <!-- Result Card -->
+                <!-- Result Card with Slides -->
                 <div class="space-y-6">
                     <div
                         id="result-card"
-                        class="story-card bg-[#14181c] rounded-3xl shadow-2xl overflow-hidden mx-auto border border-[#2c3440]"
+                        class="story-card bg-[#14181c] rounded-3xl shadow-2xl overflow-hidden mx-auto border border-[#2c3440] slide-container"
+                        ontouchstart="handleTouchStart(event)"
+                        ontouchmove="handleTouchMove(event)"
+                        ontouchend="handleTouchEnd()"
                     >
-                        <div class="h-full flex flex-col p-4 text-white overflow-hidden">
-                            <!-- Header -->
-                            <div class="text-center mb-2 flex-shrink-0">
-                                <h2 class="text-2xl font-bold mb-0.5 text-[#ff006e]">CINEMATCH</h2>
-                                <p class="text-xs text-gray-400">Tu Dating Profile</p>
+                        <div class="h-full flex flex-col text-white relative">
+                            <!-- Progress Indicators -->
+                            <div class="flex gap-1 p-2 flex-shrink-0">
+                                ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
+                                    <div class="flex-1 h-0.5 bg-[#2c3440] rounded-full overflow-hidden">
+                                        <div class="progress-bar h-full bg-[#ff006e] ${i < state.currentSlide ? 'w-full' : i === state.currentSlide ? 'w-0' : 'w-0'}"></div>
+                                    </div>
+                                `).join('')}
                             </div>
 
-                            <!-- Bio -->
-                            <div class="bg-[#2c3440] rounded-xl p-2.5 mb-1.5 flex-shrink-0 border border-[#445566]">
-                                <div class="flex items-center gap-1.5 mb-1">
-                                    <div class="text-base">📝</div>
-                                    <h4 class="text-xs font-bold text-[#ffd93d]">BIO</h4>
-                                </div>
-                                <p class="text-[10px] leading-tight text-gray-300">
-                                    ${state.result.bio}
-                                </p>
-                            </div>
-
-                            <!-- Flags Section -->
-                            <div class="grid grid-cols-2 gap-1.5 mb-1.5 flex-shrink-0">
-                                <!-- Green Flags -->
-                                <div class="bg-[#2c3440] rounded-xl p-2 border border-[#00d9a3]">
-                                    <h4 class="text-[11px] font-bold mb-1 flex items-center gap-0.5 text-[#00d9a3]">
-                                        💚 GREEN FLAGS
-                                    </h4>
-                                    <div class="space-y-0.5">
-                                        ${state.result.greenFlags.map(flag => `
-                                            <div class="flex items-start gap-1">
-                                                <span class="text-[8px] mt-0.5 flex-shrink-0 text-[#00d9a3]">•</span>
-                                                <p class="text-[8px] leading-tight text-gray-300">${flag}</p>
-                                            </div>
-                                        `).join('')}
+                            <!-- Coach Marks -->
+                            ${state.showCoachMarks ? `
+                                <div class="absolute inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-8" onclick="dismissCoachMarks()">
+                                    <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e] max-w-sm coach-mark">
+                                        <p class="text-center text-white text-sm mb-4">
+                                            👆 <strong>Desliza</strong> para navegar entre slides<br><br>
+                                            ⏱️ Las slides cambiarán <strong>automáticamente</strong><br><br>
+                                            📱 Toca para continuar
+                                        </p>
                                     </div>
                                 </div>
+                            ` : ''}
 
-                                <!-- Red Flags -->
-                                <div class="bg-[#2c3440] rounded-xl p-2 border border-[#ff4757]">
-                                    <h4 class="text-[11px] font-bold mb-1 flex items-center gap-0.5 text-[#ff4757]">
-                                        🚩 RED FLAGS
-                                    </h4>
-                                    <div class="space-y-0.5">
-                                        ${state.result.redFlags.map(flag => `
-                                            <div class="flex items-start gap-1">
-                                                <span class="text-[8px] mt-0.5 flex-shrink-0 text-[#ff4757]">•</span>
-                                                <p class="text-[8px] leading-tight text-gray-300">${flag}</p>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
+                            <!-- Slide Content -->
+                            <div class="flex-1 overflow-hidden p-4 slide-content">
+                                ${getSlideContent(state.currentSlide, state.result)}
                             </div>
 
-                            <!-- First Date Reactions -->
-                            <div class="bg-[#2c3440] rounded-xl p-2.5 mb-1.5 flex-shrink-0 border border-[#445566]">
-                                <div class="flex items-center gap-1.5 mb-1.5">
-                                    <div class="text-base">💬</div>
-                                    <h4 class="text-xs font-bold text-[#ffd93d]">FIRST DATE REACTIONS</h4>
-                                </div>
-                                <div class="space-y-1">
-                                    ${state.result.firstDateReactions.map(reaction => `
-                                        <div class="bg-[#1a1f26] rounded-lg p-1.5 border border-[#2c3440]">
-                                            <div class="flex items-center justify-between mb-0.5">
-                                                <span class="text-[9px] font-semibold text-[#ffd93d]">${reaction.user}</span>
-                                                <span class="text-[9px] text-[#ff006e]">${reaction.rating}</span>
-                                            </div>
-                                            <p class="text-[8px] leading-tight text-gray-300">"${reaction.comment}"</p>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-
-                            <!-- Compatibility -->
-                            <div class="bg-[#2c3440] rounded-xl p-2.5 flex-shrink-0 border border-[#ff006e]">
-                                <div class="flex items-start gap-1.5 mb-1">
-                                    <div class="text-lg flex-shrink-0">💘</div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-[9px] text-gray-400 mb-0.5">WHO'D SWIPE RIGHT:</p>
-                                        <h3 class="text-xs font-bold leading-tight text-[#ff006e]">
-                                            ${state.result.compatibility.type}
-                                        </h3>
-                                    </div>
-                                </div>
-                                <p class="text-[10px] leading-tight text-gray-300">
-                                    ${state.result.compatibility.description}
-                                </p>
+                            <!-- Navigation Arrows -->
+                            <div class="absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none px-2">
+                                ${state.currentSlide > 0 ? `
+                                    <button onclick="prevSlide()" class="pointer-events-auto bg-[#2c3440] bg-opacity-80 text-white rounded-full p-2 hover:bg-opacity-100 transition-all">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                        </svg>
+                                    </button>
+                                ` : '<div></div>'}
+                                ${state.currentSlide < TOTAL_SLIDES - 1 ? `
+                                    <button onclick="nextSlide()" class="pointer-events-auto bg-[#2c3440] bg-opacity-80 text-white rounded-full p-2 hover:bg-opacity-100 transition-all">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                ` : '<div></div>'}
                             </div>
 
                             <!-- Footer -->
-                            <div class="text-center mt-1.5 flex-shrink-0">
+                            <div class="text-center py-2 flex-shrink-0">
                                 <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
                             </div>
                         </div>
@@ -339,6 +571,11 @@
             const fileInput = document.getElementById('file-input');
             if (fileInput) {
                 fileInput.addEventListener('change', handleImageUpload);
+            }
+
+            // Start auto-slide if result is shown
+            if (state.result && !state.autoSlideTimer) {
+                startAutoSlide();
             }
         }
 

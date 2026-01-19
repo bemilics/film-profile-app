@@ -21,17 +21,13 @@ module.exports = async function handler(req, res) {
         content: [{
           type: 'text',
           text: JSON.stringify({
-            bio: "El tipo de persona que tiene opiniones fuertes sobre cosas random. Probablemente cancela planes para quedarse en casa, pero cuando sale es la persona más interesante de la conversación. Definitivamente tiene un playlist de Spotify para cada momento existencial.",
-            greenFlags: [
-              "Emocionalmente disponible y no le da miedo sentir cosas intensas",
-              "Tiene paciencia para las cosas buenas y aprecia los detalles sutiles de la vida",
-              "Mente abierta y dispuesto a probar cosas nuevas sin juzgar inmediatamente"
-            ],
-            redFlags: [
-              "Probablemente romanticiza su propia complejidad emocional un poco demasiado",
-              "Tiene tendencia a explicar cosas que nadie preguntó (síndrome de 'actually...')",
-              "Evita confrontación directa y prefiere procesar todo internamente primero"
-            ],
+            archetype: {
+              emoji: "🎭",
+              title: "EL CAOS ROMÁNTICO",
+              subtitle: "The Romantic Chaos",
+              description: "Lloras con Eternal Sunshine pero también con Uncut Gems. Tu rango emocional es un parque de diversiones sin cinturones de seguridad. Eres intenso sin ser agotador, profundo sin ser pretencioso.",
+              rarity: "12% de usuarios"
+            },
             firstDateReactions: [
               {
                 user: "@datenight_chronicles",
@@ -49,10 +45,46 @@ module.exports = async function handler(req, res) {
                 rating: "⭐⭐⭐⭐⭐"
               }
             ],
-            compatibility: {
-              type: "Alguien que te aterrice cuando estás pensando de más",
-              description: "Necesitas a alguien que entienda tu necesidad de introspección pero que también te recuerde que la vida pasa afuera de tu cabeza. Alguien paciente que no te apure pero tampoco te deje atascado pensando demasiado."
-            }
+            loveLanguages: {
+              dating: "Te gusta crear momentos. Vas a planear la movie night perfecta con snacks específicos y ambiente. Tu forma de coquetear es recomendarles películas como si fueran cartas de amor.",
+              general: "Expresas afecto a través de experiencias compartidas. No dices 'te quiero' seguido, pero te aprendes los comfort movies de la gente que te importa. Ese es tu love language."
+            },
+            bestMatches: [
+              {
+                emoji: "🎭",
+                type: "El Indie Softboy",
+                percentage: "89%",
+                dating: "Van a llorar juntos viendo películas y después actuar como si no pasó nada.",
+                general: "Ambos valoran la vulnerabilidad disfrazada de ironía. Se entienden sin hablar."
+              },
+              {
+                emoji: "🔥",
+                type: "El Mainstream Apologist",
+                percentage: "76%",
+                dating: "Te va a bajar de tu high horse y tú le vas a subir su taste. Balance perfecto.",
+                general: "Te complementa. Tú eres profundidad, él es ligereza. Funciona."
+              }
+            ],
+            worstMatches: [
+              {
+                emoji: "🎪",
+                type: "El Comfort Watcher",
+                percentage: "9%",
+                dating: "Quiere ver The Office por 8va vez. Tú quieres Tarkovsky. Incompatibles.",
+                general: "Ustedes procesan el mundo diferente. Uno busca escape, otro confrontación."
+              },
+              {
+                emoji: "📚",
+                type: "El Film Bro Clásico",
+                percentage: "8%",
+                dating: "Te va a mansplain Goodfellas en la primera cita. Run.",
+                general: "Su pretensión es performativa. Tu profundidad es genuina. No va a funcionar."
+              }
+            ],
+            verdict: [
+              "Eres emocionalmente complejo de formas que la mayoría no nota a primera vista. Te enamoras de cómo alguien interpreta una escena, no de su Instagram, y buscas conexión intelectual antes que química superficial. Tienes opiniones fuertes pero escuchas, intensidad emocional pero con autocontrol.",
+              "Tu match ideal no es alguien idéntico a ti, es alguien tan apasionado pero en dirección distinta. Que te rete sin invalidarte, que pueda ver películas en silencio contigo y después hablar hasta las 3am. Das lealtad genuina y conversaciones que van de lo superficial a lo existencial en 3 minutos."
+            ]
           })
         }]
       };
@@ -152,7 +184,7 @@ Si no puedes ver alguna sección, deja el array vacío. SOLO JSON, sin formato m
         max_tokens: 1500,
         messages: [{
           role: 'user',
-          content: `Basándote en este perfil de Letterboxd, genera un perfil de dating chistoso y específico:
+          content: `Basándote en este perfil de Letterboxd, genera un perfil de dating chistoso y específico en formato de SLIDES:
 
 Películas favoritas: ${parsedInfo.favorites.join(', ')}
 Ratings favoritas: ${parsedInfo.ratings?.favorites?.join(', ') || 'N/A'}
@@ -163,38 +195,70 @@ Stats adicionales: ${parsedInfo.stats || 'N/A'}
 IMPORTANTE: Responde SOLO con un objeto JSON, sin markdown, sin explicaciones, sin backticks. El JSON debe tener esta estructura exacta:
 
 {
-  "bio": "Una descripción del usuario basada en sus películas (180-220 caracteres). Captura su personalidad cinematográfica con humor y especificidad.",
-  "greenFlags": [
-    "Green flag 1 (70-90 caracteres, específica y detallada)",
-    "Green flag 2 (70-90 caracteres, específica y detallada)",
-    "Green flag 3 (70-90 caracteres, específica y detallada)"
-  ],
-  "redFlags": [
-    "Red flag 1 (70-90 caracteres, específica y detallada)",
-    "Red flag 2 (70-90 caracteres, específica y detallada)",
-    "Red flag 3 (70-90 caracteres, específica y detallada)"
-  ],
+  "archetype": {
+    "emoji": "🎭",
+    "title": "EL CAOS ROMÁNTICO",
+    "subtitle": "The Romantic Chaos",
+    "description": "Descripción de 2-3 frases que mezcle su personalidad cinematográfica con quién es como persona. Usa el espectro favoritas/recientes y ratings como base. Primera frase: su relación con el cine. Segunda frase: cómo es como persona en general.",
+    "rarity": "12% de usuarios"
+  },
   "firstDateReactions": [
     {
       "user": "@usuario1",
-      "comment": "Comentario divertido sobre el date (80-110 caracteres)",
+      "comment": "Comentario sobre COMPORTAMIENTO en la cita, no sobre películas (80-110 caracteres)",
       "rating": "⭐⭐⭐⭐"
     },
     {
       "user": "@usuario2",
-      "comment": "Comentario divertido sobre el date (80-110 caracteres)",
+      "comment": "Comentario sobre COMPORTAMIENTO en la cita, no sobre películas (80-110 caracteres)",
       "rating": "⭐⭐⭐⭐⭐"
     },
     {
       "user": "@usuario3",
-      "comment": "Comentario divertido sobre el date (80-110 caracteres)",
+      "comment": "Comentario sobre COMPORTAMIENTO en la cita, no sobre películas (80-110 caracteres)",
       "rating": "⭐⭐⭐⭐½"
     }
   ],
-  "compatibility": {
-    "type": "Tipo de persona que haría match (60-70 caracteres)",
-    "description": "Por qué harían match (180-220 caracteres). Enfócate en complementación, no solo gustos idénticos. Piensa en cómo sus diferencias los harían interesantes juntos."
-  }
+  "loveLanguages": {
+    "dating": "Texto de 2-3 frases sobre cómo se comporta en CITAS específicamente. Qué hace, cómo coquetea, qué tipo de dates planea.",
+    "general": "Texto de 2-3 frases sobre cómo expresa afecto EN GENERAL (amigos, familia, relaciones). Qué valora, cómo cuida a la gente."
+  },
+  "bestMatches": [
+    {
+      "emoji": "🎭",
+      "type": "El Indie Softboy",
+      "percentage": "89%",
+      "dating": "Comportamiento/dinámica en contexto romántico (70-90 caracteres)",
+      "general": "Compatibilidad de personalidad general (70-90 caracteres)"
+    },
+    {
+      "emoji": "🔥",
+      "type": "El Mainstream Apologist",
+      "percentage": "76%",
+      "dating": "Comportamiento/dinámica en contexto romántico (70-90 caracteres)",
+      "general": "Compatibilidad de personalidad general (70-90 caracteres)"
+    }
+  ],
+  "worstMatches": [
+    {
+      "emoji": "🎪",
+      "type": "El Comfort Watcher",
+      "percentage": "9%",
+      "dating": "Por qué no funciona en contexto romántico (70-90 caracteres)",
+      "general": "Incompatibilidad de personalidad (70-90 caracteres)"
+    },
+    {
+      "emoji": "📚",
+      "type": "El Film Bro Clásico",
+      "percentage": "12%",
+      "dating": "Por qué no funciona en contexto romántico (70-90 caracteres)",
+      "general": "Incompatibilidad de personalidad (70-90 caracteres)"
+    }
+  ],
+  "verdict": [
+    "Párrafo 1: Mezcla frases sobre RELACIONES y PERSONALIDAD de manera fluida. Habla de cómo se enamora, qué busca en pareja, mezclado con rasgos generales de carácter. Usa el análisis de favoritas/recientes y ratings. (200-250 caracteres)",
+    "Párrafo 2: Continúa mezclando facetas relacionales y personales. Qué tipo de pareja necesita, cómo es como persona, qué ofrece en una relación. Narrativa cohesiva, no lista de puntos. (200-250 caracteres)"
+  ]
 }
 
 GUÍA GENERAL:
@@ -278,41 +342,57 @@ ANALIZA TAMBIÉN:
 - Cambio de criterio: ¿Favoritas tienen mejor rating que recientes?
 - Generosidad selectiva: ¿A qué tipo de película le da ratings altos?
 
-BIO:
-- ENFÓCATE EN PERSONALIDAD, NO EN GUSTOS DE CINE.
-- USA EL ESPECTRO FAVORITAS/RECIENTES Y RATINGS como base del análisis.
-- Pregúntate: ¿Qué tipo de persona es basándote en:
-  * La relación entre sus favoritas y recientes (¿coherente? ¿explorando? ¿contradictorias?)
-  * Sus patrones de rating (¿generoso? ¿crítico? ¿polarizado?)
-  * Lo que todo esto revela sobre su personalidad
-- ¿Qué le gusta hacer fuera del cine? (infiere: ¿es social? ¿introspectivo? ¿aventurero? ¿más de casa?)
-- ¿Cómo es en relaciones? ¿En el día a día? ¿Qué valora?
-- Puedes mencionar el cine LEVEMENTE como justificación, pero el foco es la persona.
-- INCORPORA INSIGHTS del espectro: "Sus favoritas y recientes están alineadas" = seguro de sí mismo
-- Ejemplos de lo que NO queremos: "Fanática del cine indie con buen gusto en directores"
-- Ejemplos de lo que SÍ queremos: "Probablemente tiene un diario donde escribe pensamientos profundos a las 2am. El tipo de persona que prefiere conversaciones intensas sobre charlas superficiales. Sus favoritas y recientes son coherentes - sabe lo que quiere y no se disculpa por ello."
+ARCHETYPE (Slide 1):
+- Crea un ARQUETIPO único y memorable basado en la personalidad inferida del análisis.
+- El TITLE debe ser específico y evocativo, no genérico. Ejemplos: "EL CAOS ROMÁNTICO", "LA PARADOJA OPTIMISTA", "EL CRÍTICO SECRETO"
+- El SUBTITLE es la traducción al inglés, suena más aesthetic
+- El EMOJI debe representar visualmente el arquetipo
+- La DESCRIPTION tiene 2-3 frases:
+  * Primera frase: Su relación con el cine usando el espectro favoritas/recientes
+  * Segunda/tercera frase: Cómo es como PERSONA en general
+  * Ejemplo: "Lloras con Eternal Sunshine pero también con Uncut Gems. Tu rango emocional es un parque de diversiones sin cinturones de seguridad. Eres intenso sin ser agotador, profundo sin ser pretencioso."
+- RARITY: Inventa un porcentaje que suene creíble (8%-25% típicamente). Números raros son más interesantes (12%, 17%, 9%)
 
-GREEN FLAGS (Rasgos de personalidad POSITIVOS):
-- Identifica RASGOS DE CARÁCTER positivos inferidos del ESPECTRO y RATINGS.
-- ¿Es empático? ¿De mente abierta? ¿Emocionalmente inteligente? ¿Aventurero? ¿Leal? ¿Auténtico?
-- Usa el espectro favoritas/recientes y ratings como EVIDENCIA del rasgo.
-- Ejemplos usando el ESPECTRO:
-  * MAL: "Aprecia el cine europeo" (solo gustos)
-  * BIEN: "Sus favoritas y recientes muestran exploración genuina - no tiene miedo de probar cosas nuevas"
-  * BIEN: "Da ratings variados y honestos - puede diferenciar entre lo que disfruta y lo que es 'objetivamente bueno'"
-  * BIEN: "Coherencia entre favoritas y recientes - sabe quién es y no lo performa para nadie"
+LOVE LANGUAGES (Slide 3):
+- DATING: 2-3 frases sobre comportamiento específico en CITAS
+  * Qué tipo de dates planea
+  * Cómo coquetea
+  * Red flags o green flags en modo romántico
+  * Ejemplo: "Te gusta crear momentos. Vas a planear la movie night perfecta con snacks específicos. Tu forma de coquetear es 'esta peli me recordó a ti'."
+- GENERAL: 2-3 frases sobre cómo expresa afecto en TODO tipo de relaciones
+  * Con amigos, familia, pareja estable
+  * Qué valora, cómo cuida
+  * Ejemplo: "No dices 'te quiero' seguido, pero te aprendes los comfort movies de la gente que te importa. Ese es tu love language real."
 
-RED FLAGS (Rasgos de personalidad PROBLEMÁTICOS):
-- Identifica PROBLEMAS DE PERSONALIDAD usando el ESPECTRO y RATINGS como evidencia.
-- ¿Es emocionalmente cerrado? ¿Pretencioso? ¿Inauténtico? ¿Crítico en exceso?
-- Usa la data como evidencia, pero habla del problema real.
-- Ejemplos usando RATINGS y ESPECTRO:
-  * MAL: "Solo ve películas de Nolan" (solo gustos)
-  * BIEN: "Le da 5/5 a todo - probablemente evita conflicto y no puede dar feedback honesto"
-  * BIEN: "Sus favoritas son Tarkovsky pero sus recientes son Marvel - el performatividad es real"
-  * BIEN: "Solo ratings de 3/5 o menos - probablemente es crítico con todo en la vida, no solo con películas"
+BEST/WORST MATCHES (Slide 4):
+- Genera 2 BEST MATCHES y 2 WORST MATCHES
+- Cada match necesita:
+  * EMOJI: Que represente al arquetipo
+  * TYPE: Nombre del arquetipo con el que matcheas (ej: "El Indie Softboy", "El Comfort Watcher")
+  * PERCENTAGE: Porcentaje de compatibilidad
+  * DATING: Una frase sobre la dinámica romántica específica (70-90 caracteres)
+  * GENERAL: Una frase sobre compatibilidad de personalidad general (70-90 caracteres)
+- Los arquetipos de match deben ser RECONOCIBLES (film bro, casual viewer, comfort watcher, indie softboy, mainstream defender, etc.)
+- Usa el análisis del ESPECTRO y RATINGS para inferir con quién serían compatibles:
+  * Si es muy crítico → best match con alguien que lo rete, worst match con alguien sensible
+  * Si favoritas/recientes desalineadas → best match con alguien que lo aterrice
+  * Si es consistente → best match con alguien que respete eso
+- Ejemplos:
+  * BEST: "🎭 El Indie Softboy (89%) → Dating: Van a llorar juntos y después actuar como si no pasó nada. → General: Ambos valoran la vulnerabilidad disfrazada de ironía."
+  * WORST: "🎪 El Comfort Watcher (9%) → Dating: Quiere ver The Office por 8va vez. Tú quieres Tarkovsky. → General: Uno busca escape, otro confrontación."
 
-FIRST DATE REACTIONS:
+VERDICT (Slide 5):
+- Array de exactamente 2 PÁRRAFOS
+- Cada párrafo: 200-250 caracteres
+- CRUCIAL: Los párrafos NO están divididos por "EN RELACIONES" y "COMO PERSONA"
+- En cambio, cada párrafo MEZCLA ambas facetas de manera fluida, como PROSA narrativa
+- Párrafo 1: Empieza con personalidad general, luego relaciones, luego vuelve a personalidad
+  * Ejemplo: "Eres emocionalmente complejo de formas que la mayoría no nota. Te enamoras de cómo alguien interpreta una escena, no de su Instagram. Tienes opiniones fuertes pero escuchas."
+- Párrafo 2: Continúa la narrativa, mezclando qué tipo de pareja necesitas con qué ofreces como persona
+  * Ejemplo: "Necesitas alguien que te rete sin invalidarte, que vea películas en silencio contigo y después hablen hasta las 3am. Das lealtad genuina y conversaciones que van de lo superficial a lo existencial en 3 minutos."
+- El resultado debe leerse como un RETRATO COMPLETO, no como dos bloques separados
+
+FIRST DATE REACTIONS (Slide 2):
 - Describe COMPORTAMIENTOS EN LA CITA basados en personalidad inferida del ESPECTRO y RATINGS.
 - ¿Cómo actuaría alguien con estos patrones en una primera cita?
 - USA LOS INSIGHTS: Si ratings son críticos → comportamiento crítico; Si favoritas/recientes desalineadas → contradicción en comportamiento
@@ -321,23 +401,17 @@ FIRST DATE REACTIONS:
   * BIEN: "Criticó sutilmente el menú del restaurante. Esos ratings de 3/5 no mienten."
   * BIEN: "Dijo que odiaba las rom-coms pero se emocionó hablando de su película favorita... que es una rom-com."
   * BIEN: "Le gustó todo - el restaurante, la conversación, hasta el clima. Da vibes de dar 5 estrellas a todo."
-- Los @usernames pueden ser creativos: @coffeedate23, @normalviewer, @emotionallydamaged, etc.
+- Los @usernames pueden ser creativos y específicos: @coffeedate23, @normalviewer, @emotionallydamaged, @film_bro_survivor, @just_vibing, etc.
 
-COMPATIBILIDAD:
-- 70% rasgos de personalidad, 30% gustos de cine.
-- USA EL ESPECTRO para determinar compatibilidad:
-  * Si es muy rígido (favoritas = recientes) → necesita alguien flexible
-  * Si es muy explorador → necesita alguien que lo aterrice
-  * Si es crítico (ratings bajos) → necesita alguien que no se ofenda fácil
-  * Si es generoso (ratings altos) → necesita alguien genuino que valore eso
-- NO digas "alguien que también ame X película"
-- Habla de QUÉ TIPO DE PERSONA los complementaría.
-- Ejemplos usando ESPECTRO/RATINGS:
-  * MAL: "Alguien que también ame el cine indie"
-  * BIEN: "Alguien que respete tu criterio exigente pero que te recuerde que está bien disfrutar cosas 'malas'"
-  * BIEN: "Necesitas a alguien que valore tu autenticidad - tus recientes y favoritas cuentan la misma historia y eso es raro"
+RECUERDA GENERAL:
+- El cine es la VENTANA a la personalidad, no el tema principal
+- Usa el ESPECTRO FAVORITAS/RECIENTES como herramienta principal de análisis
+- Usa RATINGS para entender su psicología (crítico, generoso, polarizado, racional)
+- 70% personalidad, 30% gustos de cine en TODO
+- Tono: Sarcástico, Gen Z, chistoso pero no cruel, perceptivo
+- SOLO JSON limpio, sin markdown, sin backticks, sin explicaciones
 
-RECUERDA: El cine es la excusa. La personalidad es el punto. Solo JSON, sin formato markdown.`
+Genera el JSON ahora:`
         }]
       })
     });
