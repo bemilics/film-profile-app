@@ -37,43 +37,22 @@
                 transform: translateX(0);
             }
         }
-        .swipe-indicator {
-            pointer-events: none;
+        .slide-nudge {
+            animation: slideNudge 1.5s ease-in-out 3;
         }
-        .swipe-indicator svg:first-child {
-            animation: swipeHint1 1.5s ease-in-out infinite;
-        }
-        .swipe-indicator svg:last-child {
-            animation: swipeHint2 1.5s ease-in-out infinite;
-        }
-        @keyframes swipeHint1 {
+        @keyframes slideNudge {
             0%, 100% {
-                opacity: 0.4;
                 transform: translateX(0);
             }
-            50% {
-                opacity: 0.9;
-                transform: translateX(-20px);
+            25% {
+                transform: translateX(-10px);
             }
-        }
-        @keyframes swipeHint2 {
-            0%, 100% {
-                opacity: 0.2;
+            75% {
                 transform: translateX(0);
-            }
-            50% {
-                opacity: 0.7;
-                transform: translateX(-20px);
             }
         }
         .progress-bar {
             transition: width 0.1s linear;
-        }
-        /* Hide arrows on mobile */
-        @media (max-width: 640px) {
-            .nav-arrows {
-                display: none !important;
-            }
         }
     </style>
 </head>
@@ -96,19 +75,70 @@
             error: null,
             useMock: false,
             currentSlide: 0,
-            showSwipeIndicators: false,
             autoSlideTimer: null,
             swipeIndicatorTimer: null,
             touchStartX: 0,
             touchEndX: 0,
             autoSlideEnabled: true,
             hasCompletedCycle: false,
-            hasScrolledToResults: false
+            hasScrolledToResults: false,
+            wasRestoredFromStorage: false
         };
 
         function setState(updates) {
             state = { ...state, ...updates };
             render();
+            // Save to localStorage when result changes
+            if (updates.result !== undefined) {
+                saveToLocalStorage();
+            }
+        }
+
+        // LocalStorage functions
+        const STORAGE_KEY = 'cinematch_results';
+
+        function saveToLocalStorage() {
+            try {
+                const dataToSave = {
+                    result: state.result,
+                    image: state.image,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    // Only load if less than 7 days old
+                    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+                    if (Date.now() - data.timestamp < sevenDays) {
+                        return {
+                            result: data.result,
+                            image: data.image
+                        };
+                    } else {
+                        // Clear old data
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+            }
+            return null;
+        }
+
+        function clearLocalStorage() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (error) {
+                console.error('Error clearing localStorage:', error);
+            }
         }
 
         function handleImageUpload(e) {
@@ -156,7 +186,7 @@
                 analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
                 const analysis = JSON.parse(analysisText);
-                setState({ result: analysis, loading: false });
+                setState({ result: analysis, loading: false, wasRestoredFromStorage: false });
             } catch (err) {
                 console.error('Error:', err);
                 setState({
@@ -193,14 +223,15 @@
         function resetApp() {
             stopAutoSlide();
             stopSwipeIndicatorTimer();
+            clearLocalStorage();
             setState({
                 result: null,
                 image: null,
                 currentSlide: 0,
-                showSwipeIndicators: false,
                 autoSlideEnabled: true,
                 hasCompletedCycle: false,
-                hasScrolledToResults: false
+                hasScrolledToResults: false,
+                wasRestoredFromStorage: false
             });
         }
 
@@ -212,15 +243,14 @@
             stopSwipeIndicatorTimer();
             if (state.currentSlide < TOTAL_SLIDES - 1) {
                 setState({
-                    currentSlide: state.currentSlide + 1,
-                    showSwipeIndicators: false
+                    currentSlide: state.currentSlide + 1
                 });
                 if (state.autoSlideEnabled) {
                     startAutoSlide();
                 }
             } else {
                 // Reached the end, disable auto-slide
-                setState({ hasCompletedCycle: true, autoSlideEnabled: false, showSwipeIndicators: false });
+                setState({ hasCompletedCycle: true, autoSlideEnabled: false });
                 stopAutoSlide();
             }
         }
@@ -231,7 +261,6 @@
                 // Going backwards disables auto-slide
                 setState({
                     currentSlide: state.currentSlide - 1,
-                    showSwipeIndicators: false,
                     autoSlideEnabled: false
                 });
                 stopAutoSlide();
@@ -242,8 +271,7 @@
             stopSwipeIndicatorTimer();
             if (index >= 0 && index < TOTAL_SLIDES) {
                 setState({
-                    currentSlide: index,
-                    showSwipeIndicators: false
+                    currentSlide: index
                 });
                 startAutoSlide();
             }
@@ -258,18 +286,27 @@
             const duration = SLIDE_DURATIONS[state.currentSlide];
             const indicatorDelay = Math.max(3000, duration - 5000); // Mostrar 5s antes del autoswipe, mínimo después de 3s
 
-            // Mostrar indicadores antes del autoswipe
-            state.swipeIndicatorTimer = setTimeout(() => {
-                setState({ showSwipeIndicators: true });
-            }, indicatorDelay);
+            // Solo mostrar nudge si NO es la última slide
+            if (state.currentSlide < TOTAL_SLIDES - 1) {
+                // Mostrar nudge antes del autoswipe
+                state.swipeIndicatorTimer = setTimeout(() => {
+                    const slideContent = document.querySelector('.slide-content');
+                    if (slideContent) {
+                        slideContent.classList.add('slide-nudge');
+                        // Remover la clase después de la animación (4.5s = 1.5s * 3 repeticiones)
+                        setTimeout(() => {
+                            slideContent.classList.remove('slide-nudge');
+                        }, 4500);
+                    }
+                }, indicatorDelay);
 
-            // Auto-slide después del tiempo completo
-            state.autoSlideTimer = setTimeout(() => {
-                if (state.currentSlide < TOTAL_SLIDES - 1 && state.autoSlideEnabled) {
-                    setState({ showSwipeIndicators: false });
-                    nextSlide();
-                }
-            }, duration);
+                // Auto-slide después del tiempo completo
+                state.autoSlideTimer = setTimeout(() => {
+                    if (state.currentSlide < TOTAL_SLIDES - 1 && state.autoSlideEnabled) {
+                        nextSlide();
+                    }
+                }, duration);
+            }
         }
 
         function stopAutoSlide() {
@@ -300,9 +337,9 @@
             const diff = state.touchStartX - state.touchEndX;
 
             if (Math.abs(diff) > swipeThreshold) {
-                // User swiped manually - disable auto-slide and hide indicators
+                // User swiped manually - disable auto-slide
                 stopSwipeIndicatorTimer();
-                setState({ autoSlideEnabled: false, showSwipeIndicators: false });
+                setState({ autoSlideEnabled: false });
                 if (diff > 0) {
                     // Swipe left - next slide
                     nextSlide();
@@ -585,41 +622,9 @@
                                 `).join('')}
                             </div>
 
-                            <!-- Swipe Indicators -->
-                            ${state.showSwipeIndicators ? `
-                                <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none z-40">
-                                    <div class="swipe-indicator flex gap-1">
-                                        <svg class="w-10 h-10 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/>
-                                        </svg>
-                                        <svg class="w-10 h-10 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/>
-                                        </svg>
-                                    </div>
-                                </div>
-                            ` : ''}
-
                             <!-- Slide Content -->
                             <div class="flex-1 overflow-hidden p-4 slide-content">
                                 ${getSlideContent(state.currentSlide, state.result)}
-                            </div>
-
-                            <!-- Navigation Arrows -->
-                            <div class="nav-arrows absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none px-2">
-                                ${state.currentSlide > 0 ? `
-                                    <button onclick="prevSlide()" class="pointer-events-auto bg-[#2c3440] bg-opacity-80 text-white rounded-full p-2 hover:bg-opacity-100 transition-all">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                                        </svg>
-                                    </button>
-                                ` : '<div></div>'}
-                                ${state.currentSlide < TOTAL_SLIDES - 1 ? `
-                                    <button onclick="nextSlide()" class="pointer-events-auto bg-[#2c3440] bg-opacity-80 text-white rounded-full p-2 hover:bg-opacity-100 transition-all">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                        </svg>
-                                    </button>
-                                ` : '<div></div>'}
                             </div>
 
                             <!-- Footer -->
@@ -630,19 +635,28 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex gap-4">
-                        <button
-                            onclick="downloadResult()"
-                            class="flex-1 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
-                        >
-                            📱 Descargar para Stories
-                        </button>
-                        <button
-                            onclick="resetApp()"
-                            class="flex-1 bg-[#2c3440] text-gray-300 py-4 rounded-xl font-semibold text-lg hover:bg-[#3a4554] transition-all border border-[#445566]"
-                        >
-                            🔄 Hacer Otro
-                        </button>
+                    <div class="space-y-4">
+                        ${state.wasRestoredFromStorage ? `
+                            <div class="bg-[#2c3440] border border-[#ffd93d] rounded-xl p-3 text-center">
+                                <p class="text-sm text-[#ffd93d]">
+                                    ✨ Tus resultados fueron restaurados
+                                </p>
+                            </div>
+                        ` : ''}
+                        <div class="flex gap-4">
+                            <button
+                                onclick="downloadResult()"
+                                class="flex-1 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
+                            >
+                                📱 Descargar para Stories
+                            </button>
+                            <button
+                                onclick="resetApp()"
+                                class="flex-1 bg-[#2c3440] text-gray-300 py-4 rounded-xl font-semibold text-lg hover:bg-[#3a4554] transition-all border border-[#445566]"
+                            >
+                                🔄 Hacer Otro
+                            </button>
+                        </div>
                     </div>
                 </div>
                 `}
@@ -669,6 +683,14 @@
                     }, 100);
                 }
             }
+        }
+
+        // Load saved data on startup
+        const savedData = loadFromLocalStorage();
+        if (savedData) {
+            state.result = savedData.result;
+            state.image = savedData.image;
+            state.wasRestoredFromStorage = true;
         }
 
         // Initial render
