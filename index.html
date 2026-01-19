@@ -54,6 +54,12 @@
         .progress-bar {
             transition: width 0.1s linear;
         }
+        .slide-indicator {
+            transition: all 0.3s ease;
+        }
+        .slide-indicator.active {
+            transform: scale(1.2);
+        }
     </style>
 </head>
 <body class="bg-[#0f1419] min-h-screen">
@@ -270,10 +276,12 @@
         function goToSlide(index) {
             stopSwipeIndicatorTimer();
             if (index >= 0 && index < TOTAL_SLIDES) {
+                // User clicked on a dot - disable auto-slide
                 setState({
-                    currentSlide: index
+                    currentSlide: index,
+                    autoSlideEnabled: false
                 });
-                startAutoSlide();
+                stopAutoSlide();
             }
         }
 
@@ -613,13 +621,31 @@
                         ontouchend="handleTouchEnd()"
                     >
                         <div class="h-full flex flex-col text-white relative">
-                            <!-- Progress Indicators -->
-                            <div class="flex gap-1 p-2 flex-shrink-0">
-                                ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
-                                    <div class="flex-1 h-0.5 bg-[#2c3440] rounded-full overflow-hidden">
-                                        <div class="progress-bar h-full bg-[#ff006e] ${i < state.currentSlide ? 'w-full' : i === state.currentSlide ? 'w-0' : 'w-0'}"></div>
+                            <!-- Slide Indicators -->
+                            <div class="flex-shrink-0 px-4 pt-3 pb-2">
+                                <!-- Dots + Counter -->
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
+                                        ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
+                                            <button
+                                                onclick="goToSlide(${i})"
+                                                class="slide-indicator ${i === state.currentSlide ? 'active' : ''} w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${i === state.currentSlide ? 'bg-[#ff006e]' : i < state.currentSlide ? 'bg-[#ff006e] opacity-50 hover:opacity-70' : 'bg-[#445566] hover:bg-[#5a6678]'}"
+                                                aria-label="Ir a slide ${i + 1}"
+                                            ></button>
+                                        `).join('')}
                                     </div>
-                                `).join('')}
+                                    <div class="text-xs font-bold text-gray-400">
+                                        <span class="text-[#ff006e] text-sm">${state.currentSlide + 1}</span>/<span class="text-gray-500">${TOTAL_SLIDES}</span>
+                                    </div>
+                                </div>
+                                <!-- Progress Bars -->
+                                <div class="flex gap-1.5">
+                                    ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
+                                        <div class="flex-1 h-1 bg-[#2c3440] rounded-full overflow-hidden">
+                                            <div class="progress-bar h-full bg-[#ff006e] ${i < state.currentSlide ? 'w-full' : i === state.currentSlide ? 'w-0' : 'w-0'}"></div>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
 
                             <!-- Slide Content -->

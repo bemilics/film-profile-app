@@ -34,19 +34,15 @@ Aplicación web que toma un screenshot del perfil de Letterboxd y genera un dati
 
 #### Estructura del Perfil Generado
 
-**Orden de secciones (top → bottom):**
-1. Header (CINEMATCH)
-2. Bio
-3. Flags (Green + Red en grid 2 columnas)
-4. First Date Reactions
-5. Swipe Compatibility
-6. Footer
+**NOTA:** Desde 2026-01-19, la app usa sistema de slides. Ver sección "2026-01-19 - Rediseño Mayor" para detalles completos.
 
-**Cambios importantes:**
-- Eliminado "YOU ARE: [Personaje]" por ser muy predecible
-- Reemplazado con **"FIRST DATE REACTIONS"**: 3 reviews ficticias de dates previas con el usuario
-  - Formato: @username, comentario, rating con estrellas
-  - Enfoque en comportamientos, no en menciones directas de películas
+**Estructura original (2026-01-13):**
+- Card única con todas las secciones
+- Bio, Green/Red Flags, First Date Reactions, Compatibility
+
+**Estructura actual (2026-01-19):**
+- 5 slides navegables con swipe
+- Arquetipo + Bio → First Date Reactions → Love Languages → Best/Worst Matches → Veredicto Final
 
 #### Filosofía de Análisis
 
@@ -68,13 +64,13 @@ Aplicación web que toma un screenshot del perfil de Letterboxd y genera un dati
 - Racional (mix de ratings) → Equilibrado, criterioso
 - Contradictor (ratings inconsistentes) → Valora disfrute sobre "calidad"
 
-**Contenido de cada sección:**
+**Contenido de cada sección (actualizado 2026-01-19):**
 
-- **Bio**: Personalidad inferida (no gustos de cine), usando espectro y ratings
-- **Green Flags**: Rasgos positivos con evidencia del espectro/ratings
-- **Red Flags**: Problemas de personalidad inferidos de patrones
+- **Arquetipo**: Título único basado en películas específicas del usuario + descripción de personalidad
 - **First Date Reactions**: Comportamientos en cita basados en personalidad inferida
-- **Compatibility**: 70% personalidad, 30% cine. Enfoque en complementación
+- **Love Languages**: Cómo expresa afecto en citas (romántico) y en general (amistades/familia)
+- **Best/Worst Matches**: Arquetipos con los que matchea/no matchea, con facetas de dating + personalidad
+- **Veredicto Final**: Prosa fluida mezclando facetas relacionales y personales (2 párrafos)
 
 #### Paleta de Colores
 
@@ -107,6 +103,141 @@ Aplicación web que toma un screenshot del perfil de Letterboxd y genera un dati
 
 ---
 
+### 2026-01-19 - Rediseño Mayor: Sistema de Slides y Persistencia
+
+#### Sistema de Slides Completo
+
+**Implementación:**
+- Migración de card única a sistema de 5 slides navegables
+- Navegación por swipe gestures (mobile) y auto-slide
+- Progress indicators en la parte superior
+- Animaciones suaves entre transiciones (slideIn: 0.4s ease-out)
+
+**Secciones Rediseñadas (5 slides):**
+
+1. **Slide 1 - Arquetipo + Bio Fusionada**
+   - Emoji representativo del arquetipo
+   - Título único y específico (ej: "LA PARADOJA KAUFMAN-GERWIG")
+   - Subtitle en inglés (aesthetic)
+   - Descripción de 2-3 frases (personalidad cinematográfica + general)
+   - Porcentaje de rareza (7-23%, números impares)
+
+2. **Slide 2 - First Date Reactions**
+   - 3 reviews ficticias de dates
+   - Mantiene formato: @username, comment, rating
+   - Enfoque en comportamientos observables
+
+3. **Slide 3 - Love Languages (Dual Facet)**
+   - **EN CITAS**: Comportamiento romántico específico
+   - **EN GENERAL**: Expresión de afecto con amigos/familia
+   - 2-3 frases por faceta
+
+4. **Slide 4 - Best/Worst Matches**
+   - 2 Best Matches con % de compatibilidad
+   - 2 Worst Matches con % de incompatibilidad
+   - Cada match incluye:
+     * Emoji único
+     * Nombre del arquetipo (visual y reconocible)
+     * Línea de dinámica romántica
+     * Línea de compatibilidad de personalidad general
+
+5. **Slide 5 - Veredicto Final**
+   - 2 párrafos de prosa fluida (200-250 caracteres cada uno)
+   - Mezcla facetas relacionales y personales
+   - Sin división explícita de bloques
+
+**Tiempos de Auto-Slide:**
+- Slide 1: 15 segundos
+- Slide 2: 20 segundos
+- Slide 3: 18 segundos
+- Slide 4: 25 segundos
+- Slide 5: 25 segundos
+
+#### Sistema de Navegación
+
+**Coach Marks Rediseñadas:**
+- Eliminado modal intrusivo de onboarding
+- Implementado "nudge" visual: slide se mueve sutilmente hacia la izquierda
+- Animación de 3 repeticiones (1.5s cada una, 10px de movimiento)
+- Aparece 5 segundos antes del auto-slide (mínimo después de 3s de lectura)
+- **NO aparece en la última slide** (no hay siguiente)
+
+**Controles:**
+- Navegación principal por swipe en mobile
+- Flechas de navegación eliminadas (solo swipe + auto-slide)
+- Auto-slide se desactiva cuando:
+  * Usuario hace swipe manual
+  * Usuario retrocede a slide anterior
+  * Se completa el ciclo (llega al final)
+
+**Auto-Scroll:**
+- Al generar resultados, scroll automático suave a centro de pantalla
+- Soluciona problema de resultados fuera de vista después de subir imagen
+- Solo ocurre una vez al mostrar resultados
+
+#### Persistencia con LocalStorage
+
+**Funcionalidad:**
+- Guardado automático al generar resultados
+- Incluye: resultado JSON + imagen original + timestamp
+- Carga automática al abrir la app
+- Expiración: 7 días (datos más viejos se borran automáticamente)
+- Storage key: `cinematch_results`
+
+**UX:**
+- Banner amarillo indica cuando resultados fueron restaurados
+- "✨ Tus resultados fueron restaurados"
+- Limpieza al hacer "Hacer Otro"
+- Permite a usuarios volver días después y ver sus resultados
+
+#### Mejoras en Prompts y Generación
+
+**Arquetipos Ultra Específicos:**
+- Instrucciones para evitar clichés genéricos
+- Uso de películas/directores EXACTOS del perfil del usuario
+- Fórmula: capturar contradicciones o esencias únicas
+- Ejemplos: "LA PARADOJA KAUFMAN-GERWIG", "EL OPTIMISTA EXISTENCIAL"
+- Description debe mencionar títulos/directores reales de la lista
+
+**Matches Visuales y Reconocibles:**
+- Arquetipos específicos y memorables:
+  * "El Indie Softboy", "La Maximalista Caótica"
+  * "El Eterno Re-Visionador", "La Sad Girl de Otoño"
+  * "El Snob Involuntario", "El Defensor del Mainstream"
+- Cada match con emoji único y porcentajes variados
+- Descripciones específicas de comportamiento y compatibilidad
+
+**Reducción de Spanglish:**
+- Guía explícita de anglicismos permitidos: "tbh", "random", "vibe", "aesthetic"
+- Lista de conversiones (ej: "wholesome" → "genuino", "feelings" → "sentimientos")
+- Regla: si existe palabra natural en español, úsala
+- Mock data actualizado con español más natural
+
+**Aumento de Tokens:**
+- max_tokens: 1500 → 2500 (para respuestas más detalladas y específicas)
+
+#### Decisiones de Diseño - Slides
+
+**¿Por qué sistema de slides vs card única?**
+- Más contenido sin abrumar visualmente
+- Formato nativo de Instagram Stories (usuarios ya entrenados)
+- Permite narrativa progresiva (hook → desarrollo → cierre)
+- Cada slide es compartible individualmente
+
+**¿Por qué nudge vs flechas/indicadores?**
+- Menos intrusivo que overlays o modales
+- Enseña por interacción, no por instrucciones
+- Más elegante y menos "tutorial-y"
+- No interrumpe lectura del contenido
+
+**¿Por qué persistencia de 7 días?**
+- Balance entre retención y frescura
+- Suficiente para que usuarios vuelvan y compartan
+- Evita acumulación de datos obsoletos
+- Incentiva volver a usar la app
+
+---
+
 ## Stack Tecnológico
 
 ### Frontend
@@ -130,14 +261,17 @@ Aplicación web que toma un screenshot del perfil de Letterboxd y genera un dati
 
 ### Flujo de la App
 
-1. Usuario sube screenshot de Letterboxd
+1. Usuario sube screenshot de Letterboxd (o carga resultados guardados de localStorage)
 2. Frontend envía imagen (base64) a `/api/analyze`
 3. Backend (serverless function):
    - Paso 1: Haiku extrae películas favoritas, recientes, y ratings
    - Paso 2: Sonnet analiza data y genera perfil de personalidad
 4. Frontend recibe JSON con perfil completo
-5. Renderiza card visual (540x960px, 9:16)
-6. Usuario puede descargar como imagen para stories
+5. Guarda automáticamente en localStorage (expiración: 7 días)
+6. Renderiza 5 slides navegables (540x960px, 9:16 cada una)
+7. Auto-scroll centra resultados en pantalla
+8. Usuario navega con swipe o espera auto-slide
+9. Usuario puede descargar cualquier slide como imagen para stories
 
 ### Estructura de Archivos
 
