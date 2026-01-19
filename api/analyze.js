@@ -22,11 +22,11 @@ module.exports = async function handler(req, res) {
           type: 'text',
           text: JSON.stringify({
             archetype: {
-              emoji: "🎭",
-              title: "EL CAOS ROMÁNTICO",
-              subtitle: "The Romantic Chaos",
-              description: "Lloras con Eternal Sunshine pero también con Uncut Gems. Tu rango emocional es un parque de diversiones sin cinturones de seguridad. Eres intenso sin ser agotador, profundo sin ser pretencioso.",
-              rarity: "12% de usuarios"
+              emoji: "🌪️",
+              title: "LA PARADOJA KAUFMAN-GERWIG",
+              subtitle: "The Kaufman-Gerwig Paradox",
+              description: "Tienes a Charlie Kaufman y Greta Gerwig en tus favoritas. Esa dualidad entre cerebral-depresivo y wholesome-optimista define tu personalidad. Tus recientes están 70% alineadas con tus favoritas - sabes quién eres pero te das espacio para explorar. Eres profundo sin ser pretencioso, emocional sin hacerlo drama.",
+              rarity: "13% de usuarios"
             },
             firstDateReactions: [
               {
@@ -51,34 +51,34 @@ module.exports = async function handler(req, res) {
             },
             bestMatches: [
               {
-                emoji: "🎭",
+                emoji: "☕",
                 type: "El Indie Softboy",
-                percentage: "89%",
-                dating: "Van a llorar juntos viendo películas y después actuar como si no pasó nada.",
-                general: "Ambos valoran la vulnerabilidad disfrazada de ironía. Se entienden sin hablar."
+                percentage: "87%",
+                dating: "Van a llorar juntos viendo A24 y después ir por café de especialidad.",
+                general: "Ambos son intensos con sus feelings pero lo disfrazan de ironía. Se entienden."
               },
               {
-                emoji: "🔥",
-                type: "El Mainstream Apologist",
-                percentage: "76%",
-                dating: "Te va a bajar de tu high horse y tú le vas a subir su taste. Balance perfecto.",
-                general: "Te complementa. Tú eres profundidad, él es ligereza. Funciona."
+                emoji: "🎨",
+                type: "La Maximalist Chaotic",
+                percentage: "73%",
+                dating: "Va a llevarte a ver 3 películas random en un día. Exhausting pero nunca aburrido.",
+                general: "Te complementa. Tú analizas, ella siente. Balance perfecto entre cerebro y caos."
               }
             ],
             worstMatches: [
               {
-                emoji: "🎪",
-                type: "El Comfort Watcher",
-                percentage: "9%",
-                dating: "Quiere ver The Office por 8va vez. Tú quieres Tarkovsky. Incompatibles.",
-                general: "Ustedes procesan el mundo diferente. Uno busca escape, otro confrontación."
+                emoji: "📺",
+                type: "El Comfort Re-Watcher",
+                percentage: "11%",
+                dating: "Quiere maratonear Friends por 6ta vez. Tú necesitas novelty. No va a funcionar.",
+                general: "Uno busca escape familiar, otro busca confrontación existencial. Incompatibles."
               },
               {
-                emoji: "📚",
-                type: "El Film Bro Clásico",
-                percentage: "8%",
-                dating: "Te va a mansplain Goodfellas en la primera cita. Run.",
-                general: "Su pretensión es performativa. Tu profundidad es genuina. No va a funcionar."
+                emoji: "🎬",
+                type: "El Snob Involuntario",
+                percentage: "7%",
+                dating: "Te va a juzgar por no haber visto la filmografía completa de Tarkovsky. Tóxico.",
+                general: "Van a competir por quién es más culto. Es agotador, no romántico."
               }
             ],
             verdict: [
@@ -181,7 +181,7 @@ Si no puedes ver alguna sección, deja el array vacío. SOLO JSON, sin formato m
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
+        max_tokens: 2500,
         messages: [{
           role: 'user',
           content: `Basándote en este perfil de Letterboxd, genera un perfil de dating chistoso y específico en formato de SLIDES:
@@ -342,16 +342,42 @@ ANALIZA TAMBIÉN:
 - Cambio de criterio: ¿Favoritas tienen mejor rating que recientes?
 - Generosidad selectiva: ¿A qué tipo de película le da ratings altos?
 
-ARCHETYPE (Slide 1):
-- Crea un ARQUETIPO único y memorable basado en la personalidad inferida del análisis.
-- El TITLE debe ser específico y evocativo, no genérico. Ejemplos: "EL CAOS ROMÁNTICO", "LA PARADOJA OPTIMISTA", "EL CRÍTICO SECRETO"
-- El SUBTITLE es la traducción al inglés, suena más aesthetic
-- El EMOJI debe representar visualmente el arquetipo
-- La DESCRIPTION tiene 2-3 frases:
-  * Primera frase: Su relación con el cine usando el espectro favoritas/recientes
-  * Segunda/tercera frase: Cómo es como PERSONA en general
-  * Ejemplo: "Lloras con Eternal Sunshine pero también con Uncut Gems. Tu rango emocional es un parque de diversiones sin cinturones de seguridad. Eres intenso sin ser agotador, profundo sin ser pretencioso."
-- RARITY: Inventa un porcentaje que suene creíble (8%-25% típicamente). Números raros son más interesantes (12%, 17%, 9%)
+ARCHETYPE (Slide 1) - CRÍTICO: Debe ser ULTRA ESPECÍFICO y ÚNICO:
+
+EVITA CLICHÉS. NO uses arquetipos genéricos como:
+- ❌ "El Cinéfilo Apasionado"
+- ❌ "El Amante del Cine Indie"
+- ❌ "El Crítico Exigente"
+- ❌ "El Romántico Empedernido"
+
+EN CAMBIO, crea arquetipos HÍPER ESPECÍFICOS basados en:
+1. Las películas EXACTAS que vieron (usa títulos y directores)
+2. La contradicción o coherencia entre favoritas/recientes
+3. Patterns de rating únicos
+4. Combinaciones inesperadas de géneros
+
+EJEMPLOS DE ARQUETIPOS BUENOS (específicos, memorables):
+- ✅ "LA CONTRADICCIÓN BERGMAN-BARBIE" (si tiene cine arte + mainstream)
+- ✅ "EL OPTIMISTA EXISTENCIAL" (si tiene Tarkovsky con ratings altos)
+- ✅ "LA PARADOJA DEL CRÍTICO GENEROSO" (ratings altos en todo pero películas difíciles)
+- ✅ "EL ROMÁNTICO POST-APOCALÍPTICO" (si mezcla romance con distopias)
+- ✅ "LA DUALIDAD MIYAZAKI-LYNCH" (wholesome + perturbador)
+
+FÓRMULA PARA EL TITLE:
+- Usa COMBINACIONES inesperadas que reflejen su dualidad real
+- Menciona directores/películas específicas si es apropiado
+- Captura la CONTRADICCIÓN o ESENCIA única de su perfil
+- Debe sonar como algo que NADIE MÁS tendría
+
+DESCRIPTION (2-3 frases):
+- Primera frase: Menciona películas/directores ESPECÍFICOS de su lista
+  * Ejemplo: "Tienes a Wes Anderson y Lars von Trier en tus favoritas. Esa dualidad between whimsy y trauma es tu brand."
+- Segunda frase: Qué dice esto de su personalidad usando análisis del espectro
+  * Ejemplo: "Tus recientes y favoritas están 80% alineadas - sabes quién eres pero no eres rígido."
+- Tercera frase: Cómo son como PERSONA en general
+  * Ejemplo: "Eres profundo sin ser pretencioso, emocional sin ser dramático."
+
+RARITY: 7%-23% (números impares son más creíbles: 9%, 13%, 17%, 21%)
 
 LOVE LANGUAGES (Slide 3):
 - DATING: 2-3 frases sobre comportamiento específico en CITAS
@@ -364,22 +390,43 @@ LOVE LANGUAGES (Slide 3):
   * Qué valora, cómo cuida
   * Ejemplo: "No dices 'te quiero' seguido, pero te aprendes los comfort movies de la gente que te importa. Ese es tu love language real."
 
-BEST/WORST MATCHES (Slide 4):
-- Genera 2 BEST MATCHES y 2 WORST MATCHES
-- Cada match necesita:
-  * EMOJI: Que represente al arquetipo
-  * TYPE: Nombre del arquetipo con el que matcheas (ej: "El Indie Softboy", "El Comfort Watcher")
-  * PERCENTAGE: Porcentaje de compatibilidad
-  * DATING: Una frase sobre la dinámica romántica específica (70-90 caracteres)
-  * GENERAL: Una frase sobre compatibilidad de personalidad general (70-90 caracteres)
-- Los arquetipos de match deben ser RECONOCIBLES (film bro, casual viewer, comfort watcher, indie softboy, mainstream defender, etc.)
-- Usa el análisis del ESPECTRO y RATINGS para inferir con quién serían compatibles:
-  * Si es muy crítico → best match con alguien que lo rete, worst match con alguien sensible
-  * Si favoritas/recientes desalineadas → best match con alguien que lo aterrice
-  * Si es consistente → best match con alguien que respete eso
-- Ejemplos:
-  * BEST: "🎭 El Indie Softboy (89%) → Dating: Van a llorar juntos y después actuar como si no pasó nada. → General: Ambos valoran la vulnerabilidad disfrazada de ironía."
-  * WORST: "🎪 El Comfort Watcher (9%) → Dating: Quiere ver The Office por 8va vez. Tú quieres Tarkovsky. → General: Uno busca escape, otro confrontación."
+BEST/WORST MATCHES (Slide 4) - DEBEN SER ESPECÍFICOS Y VISUALES:
+
+CRÍTICO: Los arquetipos de match NO deben ser genéricos.
+
+EVITA:
+- ❌ "El Cinéfilo Intelectual"
+- ❌ "El Fan del Mainstream"
+- ❌ "El Amante del Cine Clásico"
+
+USA ARQUETIPOS RECONOCIBLES Y VISUALES que la gente puede imaginar:
+- ✅ "El Indie Softboy" (aesthetic, llora con A24, café de especialidad)
+- ✅ "La Film Bro Reformada" (antes era insoportable, ahora solo pretenciosa)
+- ✅ "El Comfort Re-Watcher" (ve The Office 8 veces al año)
+- ✅ "El Maximalist Chaotic" (ve 5 géneros diferentes en un día)
+- ✅ "La Criterion Completionist" (tiene Excel de películas pendientes)
+- ✅ "El Marvel Apologist" (sabe que es meh pero igual disfruta)
+- ✅ "El Nostálgico de los 90s" (top 4 son todas de 1995-2002)
+- ✅ "La Sad Girl Autumn" (solo ve películas depre de octubre a febrero)
+- ✅ "El Optimista Incorregible" (todo es 5/5, hasta las malas)
+- ✅ "El Snob Involuntario" (no es pretencioso a propósito pero lo es)
+
+CADA MATCH necesita:
+- EMOJI: Específico al arquetipo (no 🎭 para todo)
+- TYPE: Nombre memorable y visual (piensa en personas reales que conoces)
+- PERCENTAGE: Varía los números (89%, 76%, 12%, 7% - no siempre 90% o 10%)
+- DATING: Comportamiento ESPECÍFICO en contexto romántico (70-90 caracteres)
+  * Ejemplo: "Van a competir por quién vio más películas obscuras. Es tóxico pero divertido."
+- GENERAL: Compatibilidad de personalidad REAL (70-90 caracteres)
+  * Ejemplo: "Ambos son intensos con sus hobbies. Se entienden sin explicarse."
+
+USA EL ANÁLISIS DEL USUARIO:
+- Si tiene ratings críticos → best match: "El Optimista Incorregible" (balance)
+- Si favoritas = recientes → best match: "El Explorador Curioso" (complemento)
+- Si tiene películas pretenciosas → worst match: "El Snob Involuntario" (competencia tóxica)
+- Si tiene comfort movies → worst match: "El Comfort Re-Watcher" (demasiado similar, aburrido)
+
+Haz que los matches se sientan como PERSONAS REALES con quirks específicos.
 
 VERDICT (Slide 5):
 - Array de exactamente 2 PÁRRAFOS

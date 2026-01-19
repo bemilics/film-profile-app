@@ -23,8 +23,19 @@
             position: relative;
             overflow: hidden;
         }
-        .slide {
-            transition: transform 0.3s ease-out;
+        .slide-content {
+            touch-action: pan-y;
+            animation: slideIn 0.4s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
         .coach-mark {
             animation: pulse 2s infinite;
@@ -36,8 +47,11 @@
         .progress-bar {
             transition: width 0.1s linear;
         }
-        .slide-content {
-            touch-action: pan-y;
+        /* Hide arrows on mobile */
+        @media (max-width: 640px) {
+            .nav-arrows {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -63,7 +77,9 @@
             showCoachMarks: true,
             autoSlideTimer: null,
             touchStartX: 0,
-            touchEndX: 0
+            touchEndX: 0,
+            autoSlideEnabled: true,
+            hasCompletedCycle: false
         };
 
         function setState(updates) {
@@ -151,12 +167,19 @@
         }
 
         function resetApp() {
-            setState({ result: null, image: null, currentSlide: 0, showCoachMarks: true });
+            setState({
+                result: null,
+                image: null,
+                currentSlide: 0,
+                showCoachMarks: true,
+                autoSlideEnabled: true,
+                hasCompletedCycle: false
+            });
             stopAutoSlide();
         }
 
-        // Slide navigation functions
-        const SLIDE_DURATIONS = [8000, 10000, 8000, 12000, 12000]; // Duration for each slide in ms
+        // Slide navigation functions - tiempos mucho más largos
+        const SLIDE_DURATIONS = [15000, 20000, 18000, 25000, 25000]; // Duration for each slide in ms
         const TOTAL_SLIDES = 5;
 
         function nextSlide() {
@@ -165,17 +188,25 @@
                     currentSlide: state.currentSlide + 1,
                     showCoachMarks: false
                 });
-                startAutoSlide();
+                if (state.autoSlideEnabled) {
+                    startAutoSlide();
+                }
+            } else {
+                // Reached the end, disable auto-slide
+                setState({ hasCompletedCycle: true, autoSlideEnabled: false });
+                stopAutoSlide();
             }
         }
 
         function prevSlide() {
             if (state.currentSlide > 0) {
+                // Going backwards disables auto-slide
                 setState({
                     currentSlide: state.currentSlide - 1,
-                    showCoachMarks: false
+                    showCoachMarks: false,
+                    autoSlideEnabled: false
                 });
-                startAutoSlide();
+                stopAutoSlide();
             }
         }
 
@@ -190,11 +221,13 @@
         }
 
         function startAutoSlide() {
+            if (!state.autoSlideEnabled) return;
+
             stopAutoSlide();
             const duration = SLIDE_DURATIONS[state.currentSlide];
 
             state.autoSlideTimer = setTimeout(() => {
-                if (state.currentSlide < TOTAL_SLIDES - 1) {
+                if (state.currentSlide < TOTAL_SLIDES - 1 && state.autoSlideEnabled) {
                     nextSlide();
                 }
             }, duration);
@@ -221,6 +254,8 @@
             const diff = state.touchStartX - state.touchEndX;
 
             if (Math.abs(diff) > swipeThreshold) {
+                // User swiped manually - disable auto-slide
+                setState({ autoSlideEnabled: false });
                 if (diff > 0) {
                     // Swipe left - next slide
                     nextSlide();
@@ -230,12 +265,16 @@
                 }
             } else {
                 // Resume auto-slide if no swipe detected
-                startAutoSlide();
+                if (state.autoSlideEnabled) {
+                    startAutoSlide();
+                }
             }
         }
 
         function dismissCoachMarks() {
             setState({ showCoachMarks: false });
+            // Start auto-slide after dismissing coach marks
+            startAutoSlide();
         }
 
         function getSlideContent(slideIndex, result) {
@@ -510,9 +549,11 @@
                                 <div class="absolute inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-8" onclick="dismissCoachMarks()">
                                     <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e] max-w-sm coach-mark">
                                         <p class="text-center text-white text-sm mb-4">
-                                            👆 <strong>Desliza</strong> para navegar entre slides<br><br>
+                                            <span class="sm:hidden">👆 <strong>Desliza</strong> para navegar entre slides</span>
+                                            <span class="hidden sm:inline">👆 <strong>Usa las flechas</strong> para navegar</span>
+                                            <br><br>
                                             ⏱️ Las slides cambiarán <strong>automáticamente</strong><br><br>
-                                            📱 Toca para continuar
+                                            📱 Toca para comenzar
                                         </p>
                                     </div>
                                 </div>
@@ -524,7 +565,7 @@
                             </div>
 
                             <!-- Navigation Arrows -->
-                            <div class="absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none px-2">
+                            <div class="nav-arrows absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none px-2">
                                 ${state.currentSlide > 0 ? `
                                     <button onclick="prevSlide()" class="pointer-events-auto bg-[#2c3440] bg-opacity-80 text-white rounded-full p-2 hover:bg-opacity-100 transition-all">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,8 +614,8 @@
                 fileInput.addEventListener('change', handleImageUpload);
             }
 
-            // Start auto-slide if result is shown
-            if (state.result && !state.autoSlideTimer) {
+            // Start auto-slide only if coach marks are not showing
+            if (state.result && !state.autoSlideTimer && !state.showCoachMarks) {
                 startAutoSlide();
             }
         }
