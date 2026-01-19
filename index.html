@@ -37,12 +37,34 @@
                 transform: translateX(0);
             }
         }
-        .coach-mark {
-            animation: pulse 2s infinite;
+        .swipe-indicator {
+            pointer-events: none;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .swipe-indicator svg:first-child {
+            animation: swipeHint1 1.5s ease-in-out infinite;
+        }
+        .swipe-indicator svg:last-child {
+            animation: swipeHint2 1.5s ease-in-out infinite;
+        }
+        @keyframes swipeHint1 {
+            0%, 100% {
+                opacity: 0.4;
+                transform: translateX(0);
+            }
+            50% {
+                opacity: 0.9;
+                transform: translateX(-20px);
+            }
+        }
+        @keyframes swipeHint2 {
+            0%, 100% {
+                opacity: 0.2;
+                transform: translateX(0);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translateX(-20px);
+            }
         }
         .progress-bar {
             transition: width 0.1s linear;
@@ -74,12 +96,14 @@
             error: null,
             useMock: false,
             currentSlide: 0,
-            showCoachMarks: true,
+            showSwipeIndicators: false,
             autoSlideTimer: null,
+            swipeIndicatorTimer: null,
             touchStartX: 0,
             touchEndX: 0,
             autoSlideEnabled: true,
-            hasCompletedCycle: false
+            hasCompletedCycle: false,
+            hasScrolledToResults: false
         };
 
         function setState(updates) {
@@ -167,15 +191,17 @@
         }
 
         function resetApp() {
+            stopAutoSlide();
+            stopSwipeIndicatorTimer();
             setState({
                 result: null,
                 image: null,
                 currentSlide: 0,
-                showCoachMarks: true,
+                showSwipeIndicators: false,
                 autoSlideEnabled: true,
-                hasCompletedCycle: false
+                hasCompletedCycle: false,
+                hasScrolledToResults: false
             });
-            stopAutoSlide();
         }
 
         // Slide navigation functions - tiempos mucho más largos
@@ -183,27 +209,29 @@
         const TOTAL_SLIDES = 5;
 
         function nextSlide() {
+            stopSwipeIndicatorTimer();
             if (state.currentSlide < TOTAL_SLIDES - 1) {
                 setState({
                     currentSlide: state.currentSlide + 1,
-                    showCoachMarks: false
+                    showSwipeIndicators: false
                 });
                 if (state.autoSlideEnabled) {
                     startAutoSlide();
                 }
             } else {
                 // Reached the end, disable auto-slide
-                setState({ hasCompletedCycle: true, autoSlideEnabled: false });
+                setState({ hasCompletedCycle: true, autoSlideEnabled: false, showSwipeIndicators: false });
                 stopAutoSlide();
             }
         }
 
         function prevSlide() {
+            stopSwipeIndicatorTimer();
             if (state.currentSlide > 0) {
                 // Going backwards disables auto-slide
                 setState({
                     currentSlide: state.currentSlide - 1,
-                    showCoachMarks: false,
+                    showSwipeIndicators: false,
                     autoSlideEnabled: false
                 });
                 stopAutoSlide();
@@ -211,10 +239,11 @@
         }
 
         function goToSlide(index) {
+            stopSwipeIndicatorTimer();
             if (index >= 0 && index < TOTAL_SLIDES) {
                 setState({
                     currentSlide: index,
-                    showCoachMarks: false
+                    showSwipeIndicators: false
                 });
                 startAutoSlide();
             }
@@ -224,10 +253,20 @@
             if (!state.autoSlideEnabled) return;
 
             stopAutoSlide();
-            const duration = SLIDE_DURATIONS[state.currentSlide];
+            stopSwipeIndicatorTimer();
 
+            const duration = SLIDE_DURATIONS[state.currentSlide];
+            const indicatorDelay = Math.max(3000, duration - 5000); // Mostrar 5s antes del autoswipe, mínimo después de 3s
+
+            // Mostrar indicadores antes del autoswipe
+            state.swipeIndicatorTimer = setTimeout(() => {
+                setState({ showSwipeIndicators: true });
+            }, indicatorDelay);
+
+            // Auto-slide después del tiempo completo
             state.autoSlideTimer = setTimeout(() => {
                 if (state.currentSlide < TOTAL_SLIDES - 1 && state.autoSlideEnabled) {
+                    setState({ showSwipeIndicators: false });
                     nextSlide();
                 }
             }, duration);
@@ -237,6 +276,13 @@
             if (state.autoSlideTimer) {
                 clearTimeout(state.autoSlideTimer);
                 state.autoSlideTimer = null;
+            }
+        }
+
+        function stopSwipeIndicatorTimer() {
+            if (state.swipeIndicatorTimer) {
+                clearTimeout(state.swipeIndicatorTimer);
+                state.swipeIndicatorTimer = null;
             }
         }
 
@@ -254,8 +300,9 @@
             const diff = state.touchStartX - state.touchEndX;
 
             if (Math.abs(diff) > swipeThreshold) {
-                // User swiped manually - disable auto-slide
-                setState({ autoSlideEnabled: false });
+                // User swiped manually - disable auto-slide and hide indicators
+                stopSwipeIndicatorTimer();
+                setState({ autoSlideEnabled: false, showSwipeIndicators: false });
                 if (diff > 0) {
                     // Swipe left - next slide
                     nextSlide();
@@ -269,12 +316,6 @@
                     startAutoSlide();
                 }
             }
-        }
-
-        function dismissCoachMarks() {
-            setState({ showCoachMarks: false });
-            // Start auto-slide after dismissing coach marks
-            startAutoSlide();
         }
 
         function getSlideContent(slideIndex, result) {
@@ -544,17 +585,16 @@
                                 `).join('')}
                             </div>
 
-                            <!-- Coach Marks -->
-                            ${state.showCoachMarks ? `
-                                <div class="absolute inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-8" onclick="dismissCoachMarks()">
-                                    <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e] max-w-sm coach-mark">
-                                        <p class="text-center text-white text-sm mb-4">
-                                            <span class="sm:hidden">👆 <strong>Desliza</strong> para navegar entre slides</span>
-                                            <span class="hidden sm:inline">👆 <strong>Usa las flechas</strong> para navegar</span>
-                                            <br><br>
-                                            ⏱️ Las slides cambiarán <strong>automáticamente</strong><br><br>
-                                            📱 Toca para comenzar
-                                        </p>
+                            <!-- Swipe Indicators -->
+                            ${state.showSwipeIndicators ? `
+                                <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none z-40">
+                                    <div class="swipe-indicator flex gap-1">
+                                        <svg class="w-10 h-10 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                        <svg class="w-10 h-10 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/>
+                                        </svg>
                                     </div>
                                 </div>
                             ` : ''}
@@ -614,9 +654,20 @@
                 fileInput.addEventListener('change', handleImageUpload);
             }
 
-            // Start auto-slide only if coach marks are not showing
-            if (state.result && !state.autoSlideTimer && !state.showCoachMarks) {
+            // Start auto-slide when result is shown
+            if (state.result && !state.autoSlideTimer) {
                 startAutoSlide();
+            }
+
+            // Auto-scroll to center results when they appear (only once)
+            if (state.result && !state.hasScrolledToResults) {
+                const resultCard = document.getElementById('result-card');
+                if (resultCard) {
+                    state.hasScrolledToResults = true;
+                    setTimeout(() => {
+                        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
             }
         }
 

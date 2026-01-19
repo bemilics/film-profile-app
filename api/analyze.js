@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
               emoji: "🌪️",
               title: "LA PARADOJA KAUFMAN-GERWIG",
               subtitle: "The Kaufman-Gerwig Paradox",
-              description: "Tienes a Charlie Kaufman y Greta Gerwig en tus favoritas. Esa dualidad entre cerebral-depresivo y wholesome-optimista define tu personalidad. Tus recientes están 70% alineadas con tus favoritas - sabes quién eres pero te das espacio para explorar. Eres profundo sin ser pretencioso, emocional sin hacerlo drama.",
+              description: "Tienes a Charlie Kaufman y Greta Gerwig en tus favoritas. Esa dualidad entre lo cerebral-depresivo y lo genuino-optimista define tu personalidad. Tus recientes están 70% alineadas con tus favoritas - sabes quién eres pero te das espacio para explorar. Eres profundo sin ser pretencioso, emocional sin hacerlo drama.",
               rarity: "13% de usuarios"
             },
             firstDateReactions: [
@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
             ],
             loveLanguages: {
               dating: "Te gusta crear momentos. Vas a planear la movie night perfecta con snacks específicos y ambiente. Tu forma de coquetear es recomendarles películas como si fueran cartas de amor.",
-              general: "Expresas afecto a través de experiencias compartidas. No dices 'te quiero' seguido, pero te aprendes los comfort movies de la gente que te importa. Ese es tu love language."
+              general: "Expresas afecto a través de experiencias compartidas. No dices 'te quiero' seguido, pero te aprendes las películas favoritas de la gente que te importa. Así es como demuestras que te importan."
             },
             bestMatches: [
               {
@@ -55,22 +55,22 @@ module.exports = async function handler(req, res) {
                 type: "El Indie Softboy",
                 percentage: "87%",
                 dating: "Van a llorar juntos viendo A24 y después ir por café de especialidad.",
-                general: "Ambos son intensos con sus feelings pero lo disfrazan de ironía. Se entienden."
+                general: "Ambos son intensos con sus sentimientos pero lo disfrazan de ironía. Se entienden."
               },
               {
                 emoji: "🎨",
-                type: "La Maximalist Chaotic",
+                type: "La Maximalista Caótica",
                 percentage: "73%",
-                dating: "Va a llevarte a ver 3 películas random en un día. Exhausting pero nunca aburrido.",
+                dating: "Va a llevarte a ver 3 películas random en un día. Agotador pero nunca aburrido.",
                 general: "Te complementa. Tú analizas, ella siente. Balance perfecto entre cerebro y caos."
               }
             ],
             worstMatches: [
               {
                 emoji: "📺",
-                type: "El Comfort Re-Watcher",
+                type: "El Eterno Re-Visionador",
                 percentage: "11%",
-                dating: "Quiere maratonear Friends por 6ta vez. Tú necesitas novelty. No va a funcionar.",
+                dating: "Quiere maratonear Friends por 6ta vez. Tú necesitas novedad. No va a funcionar.",
                 general: "Uno busca escape familiar, otro busca confrontación existencial. Incompatibles."
               },
               {
@@ -263,6 +263,23 @@ IMPORTANTE: Responde SOLO con un objeto JSON, sin markdown, sin explicaciones, s
 
 GUÍA GENERAL:
 - Tono: Sarcástico, Gen Z, chistoso pero no cruel. Perceptivo y específico, no genérico.
+- Idioma: ESPAÑOL con anglicismos MÍNIMOS y precisos.
+
+  ANGLICISMOS PERMITIDOS (úsalos con moderación):
+  * ✅ "tbh", "random", "vibe", "aesthetic"
+  * ✅ Nombres propios en inglés (A24, Marvel, etc.)
+
+  EVITA SPANGLISH INCÓMODO:
+  * ❌ "between X y Y" → ✅ "entre X y Y"
+  * ❌ "tu brand" → ✅ "tu estilo" / "tu esencia"
+  * ❌ "wholesome" → ✅ "genuino" / "sano"
+  * ❌ "feelings" → ✅ "sentimientos"
+  * ❌ "exhausting" → ✅ "agotador"
+  * ❌ "novelty" → ✅ "novedad"
+  * ❌ Frases completas en inglés mezcladas con español
+
+  REGLA: Si existe palabra natural en español, úsala. Solo anglicismos cuando sean parte orgánica del lenguaje Gen Z.
+
 - USA LAS PELÍCULAS COMO VENTANA A LA PERSONALIDAD, no como el tema principal.
 - El cine revela rasgos de personalidad: alguien que ve películas tristes todo el tiempo probablemente es introspectivo, alguien que solo ve blockbusters tal vez evita la profundidad emocional, etc.
 - Infiere personalidad, hábitos, valores, comportamientos basándote en sus elecciones cinematográficas.
@@ -371,7 +388,7 @@ FÓRMULA PARA EL TITLE:
 
 DESCRIPTION (2-3 frases):
 - Primera frase: Menciona películas/directores ESPECÍFICOS de su lista
-  * Ejemplo: "Tienes a Wes Anderson y Lars von Trier en tus favoritas. Esa dualidad between whimsy y trauma es tu brand."
+  * Ejemplo: "Tienes a Wes Anderson y Lars von Trier en tus favoritas. Esa dualidad entre lo caprichoso y lo traumático define tu personalidad."
 - Segunda frase: Qué dice esto de su personalidad usando análisis del espectro
   * Ejemplo: "Tus recientes y favoritas están 80% alineadas - sabes quién eres pero no eres rígido."
 - Tercera frase: Cómo son como PERSONA en general
@@ -388,7 +405,7 @@ LOVE LANGUAGES (Slide 3):
 - GENERAL: 2-3 frases sobre cómo expresa afecto en TODO tipo de relaciones
   * Con amigos, familia, pareja estable
   * Qué valora, cómo cuida
-  * Ejemplo: "No dices 'te quiero' seguido, pero te aprendes los comfort movies de la gente que te importa. Ese es tu love language real."
+  * Ejemplo: "No dices 'te quiero' seguido, pero te aprendes las películas favoritas de la gente que te importa. Así demuestras afecto de verdad."
 
 BEST/WORST MATCHES (Slide 4) - DEBEN SER ESPECÍFICOS Y VISUALES:
 
@@ -400,14 +417,14 @@ EVITA:
 - ❌ "El Amante del Cine Clásico"
 
 USA ARQUETIPOS RECONOCIBLES Y VISUALES que la gente puede imaginar:
-- ✅ "El Indie Softboy" (aesthetic, llora con A24, café de especialidad)
+- ✅ "El Indie Softboy" (estético, llora con A24, café de especialidad)
 - ✅ "La Film Bro Reformada" (antes era insoportable, ahora solo pretenciosa)
-- ✅ "El Comfort Re-Watcher" (ve The Office 8 veces al año)
-- ✅ "El Maximalist Chaotic" (ve 5 géneros diferentes en un día)
-- ✅ "La Criterion Completionist" (tiene Excel de películas pendientes)
-- ✅ "El Marvel Apologist" (sabe que es meh pero igual disfruta)
+- ✅ "El Eterno Re-Visionador" (ve las mismas pelis 8 veces al año)
+- ✅ "La Maximalista Caótica" (ve 5 géneros diferentes en un día)
+- ✅ "La Coleccionista Obsesiva" (tiene Excel de películas pendientes)
+- ✅ "El Defensor del Mainstream" (sabe que no es arte pero lo disfruta)
 - ✅ "El Nostálgico de los 90s" (top 4 son todas de 1995-2002)
-- ✅ "La Sad Girl Autumn" (solo ve películas depre de octubre a febrero)
+- ✅ "La Sad Girl de Otoño" (solo ve películas depre de octubre a febrero)
 - ✅ "El Optimista Incorregible" (todo es 5/5, hasta las malas)
 - ✅ "El Snob Involuntario" (no es pretencioso a propósito pero lo es)
 
@@ -424,9 +441,9 @@ USA EL ANÁLISIS DEL USUARIO:
 - Si tiene ratings críticos → best match: "El Optimista Incorregible" (balance)
 - Si favoritas = recientes → best match: "El Explorador Curioso" (complemento)
 - Si tiene películas pretenciosas → worst match: "El Snob Involuntario" (competencia tóxica)
-- Si tiene comfort movies → worst match: "El Comfort Re-Watcher" (demasiado similar, aburrido)
+- Si tiene películas reconfortantes → worst match: "El Eterno Re-Visionador" (demasiado similar, aburrido)
 
-Haz que los matches se sientan como PERSONAS REALES con quirks específicos.
+Haz que los matches se sientan como PERSONAS REALES con peculiaridades específicas.
 
 VERDICT (Slide 5):
 - Array de exactamente 2 PÁRRAFOS
