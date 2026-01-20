@@ -26,6 +26,7 @@
         .slide-content {
             touch-action: pan-y;
             animation: slideIn 0.4s ease-out;
+            overflow-y: auto;
         }
         @keyframes slideIn {
             from {
@@ -53,6 +54,27 @@
         }
         .progress-bar {
             transition: width 0.1s linear;
+        }
+        .slide-indicator {
+            transition: all 0.3s ease;
+        }
+        .slide-indicator.active {
+            transform: scale(1.2);
+        }
+        .slide-indicators-floating {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 540px;
+            width: 100%;
+            z-index: 100;
+            background: linear-gradient(to bottom, rgba(15, 20, 25, 0.95) 0%, rgba(15, 20, 25, 0.8) 70%, rgba(15, 20, 25, 0) 100%);
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+        }
+        .slide-indicators-floating > * {
+            pointer-events: auto;
         }
     </style>
 </head>
@@ -270,10 +292,12 @@
         function goToSlide(index) {
             stopSwipeIndicatorTimer();
             if (index >= 0 && index < TOTAL_SLIDES) {
+                // User clicked on a dot - disable auto-slide
                 setState({
-                    currentSlide: index
+                    currentSlide: index,
+                    autoSlideEnabled: false
                 });
-                startAutoSlide();
+                stopAutoSlide();
             }
         }
 
@@ -603,6 +627,24 @@
                     </ol>
                 </div>
                 ` : `
+                <!-- Floating Slide Indicators - Always Visible -->
+                <div class="slide-indicators-floating px-4 pt-3 pb-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
+                                <button
+                                    onclick="goToSlide(${i})"
+                                    class="slide-indicator ${i === state.currentSlide ? 'active' : ''} w-3 h-3 rounded-full transition-all cursor-pointer ${i === state.currentSlide ? 'bg-[#ff006e]' : i < state.currentSlide ? 'bg-[#ff006e] opacity-60 hover:opacity-80' : 'bg-[#445566] hover:bg-[#5a6678]'}"
+                                    aria-label="Ir a slide ${i + 1}"
+                                ></button>
+                            `).join('')}
+                        </div>
+                        <div class="text-sm font-bold">
+                            <span class="text-[#ff006e]">${state.currentSlide + 1}</span><span class="text-gray-500">/${TOTAL_SLIDES}</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Result Card with Slides -->
                 <div class="space-y-6">
                     <div
@@ -613,22 +655,13 @@
                         ontouchend="handleTouchEnd()"
                     >
                         <div class="h-full flex flex-col text-white relative">
-                            <!-- Progress Indicators -->
-                            <div class="flex gap-1 p-2 flex-shrink-0">
-                                ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
-                                    <div class="flex-1 h-0.5 bg-[#2c3440] rounded-full overflow-hidden">
-                                        <div class="progress-bar h-full bg-[#ff006e] ${i < state.currentSlide ? 'w-full' : i === state.currentSlide ? 'w-0' : 'w-0'}"></div>
-                                    </div>
-                                `).join('')}
-                            </div>
-
                             <!-- Slide Content -->
-                            <div class="flex-1 overflow-hidden p-4 slide-content">
+                            <div class="flex-1 p-4 pt-16 slide-content overflow-y-auto">
                                 ${getSlideContent(state.currentSlide, state.result)}
                             </div>
 
                             <!-- Footer -->
-                            <div class="text-center py-2 flex-shrink-0">
+                            <div class="text-center py-2 flex-shrink-0 bg-[#14181c]">
                                 <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
                             </div>
                         </div>
