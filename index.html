@@ -76,6 +76,43 @@
         .slide-indicators-floating > * {
             pointer-events: auto;
         }
+        .nav-arrow {
+            display: none;
+        }
+        @media (min-width: 640px) {
+            .nav-arrow {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 48px;
+                height: 48px;
+                background: rgba(255, 0, 110, 0.9);
+                border-radius: 50%;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                z-index: 50;
+            }
+            .nav-arrow:hover {
+                background: rgba(255, 0, 110, 1);
+                transform: translateY(-50%) scale(1.1);
+            }
+            .nav-arrow:disabled {
+                opacity: 0.3;
+                cursor: not-allowed;
+            }
+            .nav-arrow:disabled:hover {
+                transform: translateY(-50%) scale(1);
+            }
+            .nav-arrow-left {
+                left: -24px;
+            }
+            .nav-arrow-right {
+                right: -24px;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#0f1419] min-h-screen">
@@ -338,18 +375,22 @@
         }
 
         function handleUserCodeChange(value) {
+            const newUser = state.compatibilityUser || {};
             setState({
                 compatibilityUser: {
-                    ...state.compatibilityUser,
+                    ...newUser,
+                    inputType: newUser.inputType || 'code',
                     code: value.toUpperCase()
                 }
             });
         }
 
         function handleCrushCodeChange(value) {
+            const newCrush = state.compatibilityCrush || {};
             setState({
                 compatibilityCrush: {
-                    ...state.compatibilityCrush,
+                    ...newCrush,
+                    inputType: newCrush.inputType || 'code',
                     code: value.toUpperCase()
                 }
             });
@@ -1043,6 +1084,28 @@
                         ontouchend="handleTouchEnd()"
                     >
                         <div class="h-full flex flex-col text-white relative">
+                            <!-- Navigation Arrows (Desktop only) -->
+                            <button
+                                onclick="prevSlide()"
+                                ${state.currentSlide === 0 ? 'disabled' : ''}
+                                class="nav-arrow nav-arrow-left"
+                                aria-label="Slide anterior"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <button
+                                onclick="nextSlide()"
+                                ${state.currentSlide === TOTAL_SLIDES - 1 ? 'disabled' : ''}
+                                class="nav-arrow nav-arrow-right"
+                                aria-label="Siguiente slide"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+
                             <!-- Slide Content -->
                             <div class="flex-1 p-4 pt-16 slide-content overflow-y-auto">
                                 ${getSlideContent(state.currentSlide, state.result)}
@@ -1302,6 +1365,28 @@
                         ontouchend="handleTouchEnd()"
                     >
                         <div class="h-full flex flex-col text-white relative">
+                            <!-- Navigation Arrows (Desktop only) -->
+                            <button
+                                onclick="prevSlide()"
+                                ${state.currentSlide === 0 ? 'disabled' : ''}
+                                class="nav-arrow nav-arrow-left"
+                                aria-label="Slide anterior"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <button
+                                onclick="nextSlide()"
+                                ${state.currentSlide === TOTAL_SLIDES - 1 ? 'disabled' : ''}
+                                class="nav-arrow nav-arrow-right"
+                                aria-label="Siguiente slide"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+
                             <!-- Slide Content -->
                             <div class="flex-1 p-4 pt-16 slide-content overflow-y-auto">
                                 ${getCompatibilitySlideContent(state.currentSlide, state.compatibilityResult)}
@@ -1375,6 +1460,7 @@
             state.result = savedData.result;
             state.image = savedData.image;
             state.wasRestoredFromStorage = true;
+            state.view = 'results'; // IMPORTANTE: cambiar vista a 'results'
         }
 
         // Initial render
