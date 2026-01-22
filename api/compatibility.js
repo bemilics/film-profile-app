@@ -6,7 +6,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { user, crush, useMock } = req.body;
+    const { user, crush, useMock, pronoun = 'neutro', crushPronoun = 'neutro' } = req.body;
 
     if (!user || !crush) {
       return res.status(400).json({ error: 'Both user and crush data required' });
@@ -105,7 +105,7 @@ module.exports = async function handler(req, res) {
 
     // PASO FINAL: Generar análisis de compatibilidad con ambos perfiles
     console.log('Generating compatibility analysis...');
-    const compatibility = await generateCompatibilityAnalysis(userProfile, crushProfile);
+    const compatibility = await generateCompatibilityAnalysis(userProfile, crushProfile, pronoun, crushPronoun);
 
     return res.status(200).json(compatibility);
 
@@ -221,7 +221,7 @@ SOLO JSON, sin markdown, sin explicaciones.`
 }
 
 // Helper: Generar análisis de compatibilidad
-async function generateCompatibilityAnalysis(userProfile, crushProfile) {
+async function generateCompatibilityAnalysis(userProfile, crushProfile, pronoun = 'neutro', crushPronoun = 'neutro') {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -250,6 +250,19 @@ LINEAMIENTOS:
 - USA SUS PELÍCULAS/ARQUETIPOS ESPECÍFICOS como ventanas a la dinámica
 - No seas genérico, menciona títulos/directores reales de ambos perfiles
 - Sé honesto sobre red flags, pero no cruel
+
+PRONOMBRES:
+- USUARIO (primer perfil): usa pronombre "${pronoun}"
+  * Si es "masculino": "él", "este usuario", referencias masculinas
+  * Si es "femenino": "ella", "esta usuaria", referencias femeninas
+  * Si es "neutro": "elle", "esta persona", lenguaje neutro o reformulaciones sin género
+
+- CRUSH (segundo perfil): usa pronombre "${crushPronoun}"
+  * Si es "masculino": "él", referencias masculinas
+  * Si es "femenino": "ella", referencias femeninas
+  * Si es "neutro": "elle", lenguaje neutro o reformulaciones sin género
+
+- Cuando hables de AMBOS juntos: usa "ustedes" (neutro y apropiado)
 
 ESTRUCTURA JSON:
 

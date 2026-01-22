@@ -149,7 +149,8 @@
             compatibilityResult: null,
             compatibilityUser: null,
             compatibilityCrush: null,
-            pronoun: 'neutro' // 'masculino', 'femenino', 'neutro'
+            pronoun: 'neutro', // 'masculino', 'femenino', 'neutro'
+            crushPronoun: 'neutro' // 'masculino', 'femenino', 'neutro'
         };
 
         function setState(updates) {
@@ -401,7 +402,7 @@
                 compatibilityResult: null,
                 compatibilityUser: null,
                 compatibilityCrush: null
-                // pronoun se mantiene para no perder la selección del usuario
+                // pronoun y crushPronoun se mantienen para no perder la selección del usuario
             });
         }
 
@@ -431,19 +432,25 @@
         }
 
         function setUserInputType(type) {
+            const current = state.compatibilityUser || {};
             setState({
                 compatibilityUser: {
-                    ...(state.compatibilityUser || {}),
-                    inputType: type
+                    inputType: type,
+                    // Solo mantener code o screenshot según el tipo
+                    ...(type === 'code' && current.code ? { code: current.code } : {}),
+                    ...(type === 'screenshot' && current.screenshot ? { screenshot: current.screenshot } : {})
                 }
             });
         }
 
         function setCrushInputType(type) {
+            const current = state.compatibilityCrush || {};
             setState({
                 compatibilityCrush: {
-                    ...(state.compatibilityCrush || {}),
-                    inputType: type
+                    inputType: type,
+                    // Solo mantener code o screenshot según el tipo
+                    ...(type === 'code' && current.code ? { code: current.code } : {}),
+                    ...(type === 'screenshot' && current.screenshot ? { screenshot: current.screenshot } : {})
                 }
             });
         }
@@ -519,6 +526,27 @@
             const crushReady = (state.compatibilityCrush?.inputType === 'code' && state.compatibilityCrush?.code?.length === 6) ||
                               (state.compatibilityCrush?.inputType === 'screenshot' && state.compatibilityCrush?.screenshot);
 
+            // Debug logging
+            if (isDevelopment) {
+                console.log('[canAnalyzeCompatibility]', {
+                    user: {
+                        inputType: state.compatibilityUser?.inputType,
+                        code: state.compatibilityUser?.code,
+                        codeLength: state.compatibilityUser?.code?.length,
+                        hasScreenshot: !!state.compatibilityUser?.screenshot,
+                        ready: userReady
+                    },
+                    crush: {
+                        inputType: state.compatibilityCrush?.inputType,
+                        code: state.compatibilityCrush?.code,
+                        codeLength: state.compatibilityCrush?.code?.length,
+                        hasScreenshot: !!state.compatibilityCrush?.screenshot,
+                        ready: crushReady
+                    },
+                    canAnalyze: userReady && crushReady
+                });
+            }
+
             return userReady && crushReady;
         }
 
@@ -553,7 +581,9 @@
                     body: JSON.stringify({
                         user: userData,
                         crush: crushData,
-                        useMock: state.useMock
+                        useMock: state.useMock,
+                        pronoun: state.pronoun,
+                        crushPronoun: state.crushPronoun
                     })
                 });
 
@@ -1217,12 +1247,12 @@
                             </button>
 
                             <!-- Slide Content -->
-                            <div class="flex-1 p-4 pt-16 slide-content overflow-y-auto">
+                            <div class="p-4 pt-16 slide-content overflow-y-auto" style="flex: 1 1 0; min-height: 0;">
                                 ${getSlideContent(state.currentSlide, state.result)}
                             </div>
 
                             <!-- Footer -->
-                            <div class="text-center py-3 flex-shrink-0 bg-[#14181c] border-t border-[#2c3440]">
+                            <div class="text-center py-3 flex-shrink-0 bg-[#14181c] border-t border-[#2c3440]" style="flex: 0 0 auto;">
                                 ${state.profileCode ? `
                                     <div class="flex items-center justify-center gap-2 mb-1">
                                         <span class="text-xs text-gray-400">Código:</span>
@@ -1294,6 +1324,34 @@
                         <p class="text-gray-400">Descubre qué tan compatible eres con tu crush</p>
                     </div>
 
+                    <!-- Pronoun Selection for Compatibility -->
+                    <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                        <div class="text-center mb-4">
+                            <h3 class="font-bold text-lg text-[#ffd93d] mb-2">Pronombres</h3>
+                            <p class="text-sm text-gray-400">¿Cómo quieres que hablemos de ti en el análisis?</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button
+                                onclick="setState({ pronoun: 'masculino' })"
+                                class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'masculino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                            >
+                                Él
+                            </button>
+                            <button
+                                onclick="setState({ pronoun: 'femenino' })"
+                                class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'femenino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                            >
+                                Ella
+                            </button>
+                            <button
+                                onclick="setState({ pronoun: 'neutro' })"
+                                class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'neutro' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                            >
+                                Elle
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Tu Perfil -->
                     <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
                         <h3 class="font-bold text-lg mb-4 text-[#ffd93d]">👤 Tu Perfil</h3>
@@ -1361,6 +1419,31 @@
                     <!-- Perfil de Tu Crush -->
                     <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
                         <h3 class="font-bold text-lg mb-4 text-[#ffd93d]">💕 Perfil de la Otra Persona</h3>
+
+                        <!-- Crush Pronoun Selection -->
+                        <div class="mb-4 pb-4 border-b border-[#2c3440]">
+                            <label class="block text-sm text-gray-400 mb-2">¿Qué pronombres usa esta persona?</label>
+                            <div class="flex gap-3">
+                                <button
+                                    onclick="setState({ crushPronoun: 'masculino' })"
+                                    class="flex-1 py-2 rounded-lg font-semibold text-sm transition-all ${state.crushPronoun === 'masculino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Él
+                                </button>
+                                <button
+                                    onclick="setState({ crushPronoun: 'femenino' })"
+                                    class="flex-1 py-2 rounded-lg font-semibold text-sm transition-all ${state.crushPronoun === 'femenino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Ella
+                                </button>
+                                <button
+                                    onclick="setState({ crushPronoun: 'neutro' })"
+                                    class="flex-1 py-2 rounded-lg font-semibold text-sm transition-all ${state.crushPronoun === 'neutro' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Elle
+                                </button>
+                            </div>
+                        </div>
 
                         <div class="mb-4">
                             <label class="block text-sm text-gray-400 mb-2">¿Cómo quieres ingresar su perfil?</label>
@@ -1513,12 +1596,12 @@
                             </button>
 
                             <!-- Slide Content -->
-                            <div class="flex-1 p-4 pt-16 slide-content overflow-y-auto">
+                            <div class="p-4 pt-16 slide-content overflow-y-auto" style="flex: 1 1 0; min-height: 0;">
                                 ${getCompatibilitySlideContent(state.currentSlide, state.compatibilityResult)}
                             </div>
 
                             <!-- Footer -->
-                            <div class="text-center py-3 flex-shrink-0 bg-[#14181c] border-t border-[#2c3440]">
+                            <div class="text-center py-3 flex-shrink-0 bg-[#14181c] border-t border-[#2c3440]" style="flex: 0 0 auto;">
                                 <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
                             </div>
                         </div>
