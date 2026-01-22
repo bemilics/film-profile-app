@@ -1,4 +1,10 @@
-const { kv } = require('@vercel/kv');
+// Try to import Vercel KV, but handle if it's not available
+let kv = null;
+try {
+  kv = require('@vercel/kv').kv;
+} catch (error) {
+  console.warn('[compatibility] Vercel KV not available');
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -64,9 +70,15 @@ module.exports = async function handler(req, res) {
     // CASO 1 & 2: Obtener perfil de usuario
     let userProfile;
     if (user.type === 'code') {
+      if (!kv) {
+        return res.status(503).json({
+          error: 'Codes not available',
+          message: 'Vercel KV not configured - please use screenshots instead'
+        });
+      }
       const userData = await kv.get(`profile:${user.value.toUpperCase()}`);
       if (!userData) {
-        return res.status(404).json({ error: 'User profile code not found' });
+        return res.status(404).json({ error: 'User profile code not found or expired' });
       }
       const parsedUserData = typeof userData === 'string' ? JSON.parse(userData) : userData;
       userProfile = parsedUserData.profile;
@@ -85,9 +97,15 @@ module.exports = async function handler(req, res) {
     // CASO 1 & 3: Obtener perfil de crush
     let crushProfile;
     if (crush.type === 'code') {
+      if (!kv) {
+        return res.status(503).json({
+          error: 'Codes not available',
+          message: 'Vercel KV not configured - please use screenshots instead'
+        });
+      }
       const crushData = await kv.get(`profile:${crush.value.toUpperCase()}`);
       if (!crushData) {
-        return res.status(404).json({ error: 'Crush profile code not found' });
+        return res.status(404).json({ error: 'Crush profile code not found or expired' });
       }
       const parsedCrushData = typeof crushData === 'string' ? JSON.parse(crushData) : crushData;
       crushProfile = parsedCrushData.profile;

@@ -150,7 +150,8 @@
             compatibilityUser: null,
             compatibilityCrush: null,
             pronoun: 'neutro', // 'masculino', 'femenino', 'neutro'
-            crushPronoun: 'neutro' // 'masculino', 'femenino', 'neutro'
+            crushPronoun: 'neutro', // 'masculino', 'femenino', 'neutro'
+            kvEnabled: null // null = unknown, true = enabled, false = disabled
         };
 
         function setState(updates) {
@@ -301,6 +302,7 @@
                 const analysis = JSON.parse(analysisText);
 
                 // Guardar perfil y obtener código
+                console.log('[analyzeProfile] Attempting to save profile and get code...');
                 try {
                     const saveResponse = await fetch('/api/save-profile', {
                         method: 'POST',
@@ -310,15 +312,35 @@
                         body: JSON.stringify({ profile: analysis })
                     });
 
+                    console.log('[analyzeProfile] Save response status:', saveResponse.status);
+
                     if (saveResponse.ok) {
-                        const { code } = await saveResponse.json();
-                        setState({ result: analysis, profileCode: code, loading: false, wasRestoredFromStorage: false, view: 'results' });
+                        const saveData = await saveResponse.json();
+                        console.log('[analyzeProfile] Received code:', saveData.code);
+                        console.log('[analyzeProfile] KV enabled:', saveData.kvEnabled);
+
+                        if (saveData.warning) {
+                            console.warn('[analyzeProfile] Warning:', saveData.warning);
+                        }
+
+                        setState({
+                            result: analysis,
+                            profileCode: saveData.code,
+                            kvEnabled: saveData.kvEnabled || false,
+                            loading: false,
+                            wasRestoredFromStorage: false,
+                            view: 'results'
+                        });
+
+                        console.log('[analyzeProfile] State updated with profileCode:', saveData.code, 'kvEnabled:', saveData.kvEnabled);
                     } else {
+                        const errorData = await saveResponse.json();
+                        console.error('[analyzeProfile] Failed to save profile:', errorData);
                         // Si falla guardar el código, igual mostramos resultados
                         setState({ result: analysis, loading: false, wasRestoredFromStorage: false, view: 'results' });
                     }
                 } catch (codeError) {
-                    console.error('Error saving profile code:', codeError);
+                    console.error('[analyzeProfile] Error saving profile code:', codeError);
                     // Si falla, igual mostramos resultados sin código
                     setState({ result: analysis, loading: false, wasRestoredFromStorage: false, view: 'results' });
                 }
@@ -409,13 +431,33 @@
         function copyProfileCode() {
             if (state.profileCode) {
                 navigator.clipboard.writeText(state.profileCode).then(() => {
+                    console.log('[copyProfileCode] Code copied:', state.profileCode);
                     const icon = document.getElementById('copy-icon');
                     if (icon) {
+                        const originalText = icon.textContent;
                         icon.textContent = '✅';
-                        setTimeout(() => {
-                            icon.textContent = '📋';
-                        }, 2000);
+
+                        // También cambiar el texto del botón temporalmente
+                        const button = icon.parentElement;
+                        if (button) {
+                            const codeSpan = button.querySelector('span:first-child');
+                            if (codeSpan) {
+                                const originalCode = codeSpan.textContent;
+                                codeSpan.textContent = '¡COPIADO!';
+                                setTimeout(() => {
+                                    codeSpan.textContent = originalCode;
+                                    icon.textContent = originalText;
+                                }, 2000);
+                            } else {
+                                setTimeout(() => {
+                                    icon.textContent = originalText;
+                                }, 2000);
+                            }
+                        }
                     }
+                }).catch(err => {
+                    console.error('[copyProfileCode] Failed to copy:', err);
+                    alert('No se pudo copiar el código. Por favor, cópialo manualmente: ' + state.profileCode);
                 });
             }
         }
@@ -606,9 +648,19 @@
                 });
 
             } catch (err) {
-                console.error('Error:', err);
+                console.error('[analyzeCompatibility] Error:', err);
+
+                let errorMessage = 'Error al analizar compatibilidad. Intenta de nuevo.';
+
+                // Check if it's a KV error
+                if (err.message && err.message.includes('503')) {
+                    errorMessage = '⚠️ Los códigos no están disponibles en este momento. Por favor, usa screenshots en su lugar.';
+                } else if (err.message && err.message.includes('404')) {
+                    errorMessage = '❌ Uno o ambos códigos no fueron encontrados. Verifica que sean correctos o usa screenshots.';
+                }
+
                 setState({
-                    error: 'Error al analizar compatibilidad. Intenta de nuevo.',
+                    error: errorMessage,
                     loading: false
                 });
             }
@@ -1252,20 +1304,35 @@
                             </div>
 
                             <!-- Footer -->
-                            <div class="text-center py-3 flex-shrink-0 bg-[#14181c] border-t border-[#2c3440]" style="flex: 0 0 auto;">
+                            <div class="text-center py-4 flex-shrink-0 bg-[#14181c] border-t-2 border-[#2c3440]" style="flex: 0 0 auto;">
                                 ${state.profileCode ? `
-                                    <div class="flex items-center justify-center gap-2 mb-1">
-                                        <span class="text-xs text-gray-400">Código:</span>
-                                        <button
-                                            onclick="copyProfileCode()"
-                                            class="text-sm font-bold text-[#ffd93d] hover:text-[#ffed93] transition-all flex items-center gap-1"
-                                            title="Copiar código"
-                                        >
-                                            ${state.profileCode}
-                                            <span id="copy-icon" class="text-xs">📋</span>
-                                        </button>
+                                    <div class="mb-2 px-4">
+                                        <div class="bg-[#2c3440] rounded-lg p-3 border border-[#ffd93d]">
+                                            <div class="text-xs text-gray-400 mb-1">Tu código de perfil:</div>
+                                            <button
+                                                onclick="copyProfileCode()"
+                                                class="w-full py-2 px-4 bg-[#ffd93d] text-[#0f1419] rounded-md font-mono font-bold text-xl hover:bg-[#ffed93] transition-all active:scale-95 flex items-center justify-center gap-2"
+                                                title="Click para copiar"
+                                            >
+                                                <span>${state.profileCode}</span>
+                                                <span id="copy-icon" class="text-lg">📋</span>
+                                            </button>
+                                            ${state.kvEnabled === false ? `
+                                                <div class="mt-2 text-xs text-[#ff4757]">
+                                                    ⚠️ Código temporal (solo esta sesión)
+                                                </div>
+                                            ` : ''}
+                                        </div>
                                     </div>
-                                ` : ''}
+                                ` : `
+                                    <div class="mb-2 px-4">
+                                        <div class="bg-[#2c3440] rounded-lg p-3 border border-[#ff4757]">
+                                            <div class="text-xs text-[#ff4757]">
+                                                ⚠️ No se pudo generar código
+                                            </div>
+                                        </div>
+                                    </div>
+                                `}
                                 <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
                             </div>
                         </div>
@@ -1278,6 +1345,23 @@
                                 <p class="text-sm text-[#ffd93d]">
                                     ✨ Tus resultados fueron restaurados
                                 </p>
+                            </div>
+                        ` : ''}
+                        ${state.profileCode && !state.wasRestoredFromStorage ? `
+                            <div class="bg-[#14181c] border-2 border-[#ffd93d] rounded-xl p-4">
+                                <div class="flex items-start gap-3">
+                                    <div class="text-2xl flex-shrink-0">💡</div>
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-[#ffd93d] mb-1">¡Tu código está listo!</h4>
+                                        <p class="text-xs text-gray-300">
+                                            Tu código <span class="font-mono font-bold text-[#ffd93d]">${state.profileCode}</span> está en el footer de la imagen.
+                                            ${state.kvEnabled ?
+                                                'Compártelo para medir compatibilidad con alguien más.' :
+                                                'Es temporal, usa screenshot si quieres guardarlo.'
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         ` : ''}
                         <div class="flex gap-4">
