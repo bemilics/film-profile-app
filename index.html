@@ -155,43 +155,84 @@
         function setState(updates) {
             state = { ...state, ...updates };
             render();
-            // Save to localStorage when result changes
-            if (updates.result !== undefined) {
-                saveToLocalStorage();
+
+            // Save to localStorage when results change
+            if (updates.result !== undefined && state.view === 'results') {
+                saveStandardToLocalStorage();
+            }
+            if (updates.compatibilityResult !== undefined && state.view === 'compatibility-results') {
+                saveCompatibilityToLocalStorage();
             }
         }
 
-        // LocalStorage functions
-        const STORAGE_KEY = 'cinematch_results';
+        // LocalStorage functions - Rediseñadas para soportar 2 tipos de resultados
+        const STORAGE_KEY_STANDARD = 'cinematch_standard_results';
+        const STORAGE_KEY_COMPATIBILITY = 'cinematch_compatibility_results';
+        const STORAGE_EXPIRATION_DAYS = 7;
 
-        function saveToLocalStorage() {
+        function saveStandardToLocalStorage() {
             try {
                 const dataToSave = {
+                    type: 'standard',
                     result: state.result,
                     image: state.image,
+                    profileCode: state.profileCode,
                     timestamp: Date.now()
                 };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+                localStorage.setItem(STORAGE_KEY_STANDARD, JSON.stringify(dataToSave));
+                console.log('Standard results saved to localStorage');
             } catch (error) {
-                console.error('Error saving to localStorage:', error);
+                console.error('Error saving standard results:', error);
+            }
+        }
+
+        function saveCompatibilityToLocalStorage() {
+            try {
+                const dataToSave = {
+                    type: 'compatibility',
+                    compatibilityResult: state.compatibilityResult,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(STORAGE_KEY_COMPATIBILITY, JSON.stringify(dataToSave));
+                console.log('Compatibility results saved to localStorage');
+            } catch (error) {
+                console.error('Error saving compatibility results:', error);
             }
         }
 
         function loadFromLocalStorage() {
+            const expirationMs = STORAGE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+
             try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    // Only load if less than 7 days old
-                    const sevenDays = 7 * 24 * 60 * 60 * 1000;
-                    if (Date.now() - data.timestamp < sevenDays) {
+                // Intentar cargar resultados standard
+                const savedStandard = localStorage.getItem(STORAGE_KEY_STANDARD);
+                if (savedStandard) {
+                    const data = JSON.parse(savedStandard);
+                    if (Date.now() - data.timestamp < expirationMs) {
+                        console.log('Loading standard results from localStorage');
                         return {
+                            type: 'standard',
                             result: data.result,
-                            image: data.image
+                            image: data.image,
+                            profileCode: data.profileCode
                         };
                     } else {
-                        // Clear old data
-                        localStorage.removeItem(STORAGE_KEY);
+                        localStorage.removeItem(STORAGE_KEY_STANDARD);
+                    }
+                }
+
+                // Intentar cargar resultados de compatibilidad
+                const savedCompatibility = localStorage.getItem(STORAGE_KEY_COMPATIBILITY);
+                if (savedCompatibility) {
+                    const data = JSON.parse(savedCompatibility);
+                    if (Date.now() - data.timestamp < expirationMs) {
+                        console.log('Loading compatibility results from localStorage');
+                        return {
+                            type: 'compatibility',
+                            compatibilityResult: data.compatibilityResult
+                        };
+                    } else {
+                        localStorage.removeItem(STORAGE_KEY_COMPATIBILITY);
                     }
                 }
             } catch (error) {
@@ -202,7 +243,9 @@
 
         function clearLocalStorage() {
             try {
-                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(STORAGE_KEY_STANDARD);
+                localStorage.removeItem(STORAGE_KEY_COMPATIBILITY);
+                console.log('localStorage cleared');
             } catch (error) {
                 console.error('Error clearing localStorage:', error);
             }
@@ -213,10 +256,11 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    setState({ 
-                        image: e.target.result, 
-                        result: null, 
-                        error: null 
+                    setState({
+                        image: e.target.result,
+                        result: null,
+                        error: null,
+                        wasRestoredFromStorage: false
                     });
                 };
                 reader.readAsDataURL(file);
@@ -335,12 +379,18 @@
         }
 
         function resetApp() {
+            console.log('Resetting app...');
             stopAutoSlide();
             stopSwipeIndicatorTimer();
             clearLocalStorage();
+
+            // Reset completo del state a valores iniciales
             setState({
-                result: null,
                 image: null,
+                loading: false,
+                result: null,
+                error: null,
+                useMock: false,
                 currentSlide: 0,
                 autoSlideEnabled: true,
                 hasCompletedCycle: false,
@@ -351,6 +401,7 @@
                 compatibilityResult: null,
                 compatibilityUser: null,
                 compatibilityCrush: null
+                // pronoun se mantiene para no perder la selección del usuario
             });
         }
 
@@ -374,7 +425,8 @@
                 hasScrolledToResults: false,
                 currentSlide: 0,
                 autoSlideEnabled: true,
-                hasCompletedCycle: false
+                hasCompletedCycle: false,
+                wasRestoredFromStorage: false
             });
         }
 
@@ -473,7 +525,7 @@
         async function analyzeCompatibility() {
             if (!canAnalyzeCompatibility()) return;
 
-            setState({ loading: true, error: null });
+            setState({ loading: true, error: null, wasRestoredFromStorage: false });
 
             try {
                 // Preparar datos de usuario
@@ -993,7 +1045,7 @@
                     <p class="text-gray-400 text-lg">Tu Dating Profile Cinematográfico</p>
                 </div>
 
-                ${state.view === 'home' && !state.result ? `
+                ${state.view === 'home' ? `
                 <!-- Pronoun Selection -->
                 <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 mb-6 border border-[#2c3440]">
                     <div class="text-center mb-4">
@@ -1474,6 +1526,13 @@
 
                     <!-- Action Buttons -->
                     <div class="space-y-4">
+                        ${state.wasRestoredFromStorage ? `
+                            <div class="bg-[#2c3440] border border-[#ffd93d] rounded-xl p-3 text-center">
+                                <p class="text-sm text-[#ffd93d]">
+                                    ✨ Tu análisis de compatibilidad fue restaurado
+                                </p>
+                            </div>
+                        ` : ''}
                         <div class="flex gap-4">
                             <button
                                 onclick="downloadCompatibilityResult()"
@@ -1530,10 +1589,21 @@
         // Load saved data on startup
         const savedData = loadFromLocalStorage();
         if (savedData) {
-            state.result = savedData.result;
-            state.image = savedData.image;
-            state.wasRestoredFromStorage = true;
-            state.view = 'results'; // IMPORTANTE: cambiar vista a 'results'
+            console.log('Restoring from localStorage, type:', savedData.type);
+
+            if (savedData.type === 'standard') {
+                state.result = savedData.result;
+                state.image = savedData.image;
+                state.profileCode = savedData.profileCode;
+                state.view = 'results';
+                state.wasRestoredFromStorage = true;
+                state.hasScrolledToResults = false; // Reset para que auto-scroll funcione
+            } else if (savedData.type === 'compatibility') {
+                state.compatibilityResult = savedData.compatibilityResult;
+                state.view = 'compatibility-results';
+                state.wasRestoredFromStorage = true;
+                state.hasScrolledToResults = false; // Reset para que auto-scroll funcione
+            }
         }
 
         // Initial render
