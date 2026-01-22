@@ -175,6 +175,37 @@ Aplicación web que toma un screenshot del perfil de Letterboxd y genera un dati
 - Soluciona problema de resultados fuera de vista después de subir imagen
 - Solo ocurre una vez al mostrar resultados
 
+**Indicadores Flotantes (Position Fixed):**
+
+*Problema identificado:*
+- Los indicadores de slides se perdían al hacer scroll
+- Usuario necesitaba verlos constantemente para saber en qué slide estaba
+
+*Primer intento (fallido):*
+- Usar `position: sticky` dentro del contenedor de resultados
+- No funcionó: el indicador seguía perdiéndose al scrollear
+
+*Solución final implementada:*
+- Indicadores movidos fuera del contenedor de resultados
+- `position: fixed` con `top: 0` (siempre visible en toda la página)
+- Centrados con `left: 50%; transform: translateX(-50%)`
+- `max-width: 540px` para alinearse con el ancho de la card
+- `z-index: 100` para estar siempre sobre todo el contenido
+- Eliminadas las barras de progreso tipo Instagram Stories (estaban bugueadas)
+- Solo quedan dots (w-3 h-3) y contador de slides (ej: "1/5", "2/5")
+
+*Detalles técnicos:*
+- Background: `linear-gradient` de negro semi-transparente que se desvanece
+- `backdrop-filter: blur(8px)` para efecto glassmorphism
+- `pointer-events: none` en el contenedor, `pointer-events: auto` en los hijos (permite clicks)
+- Slide content tiene `pt-16` para evitar que el texto quede oculto bajo los indicadores
+- Indicadores son clickeables para saltar a cualquier slide
+
+*UX resultante:*
+- Indicadores siempre visibles sin importar scroll
+- Usuario siempre sabe en qué slide está y cuántas quedan
+- Navegación más intuitiva al poder clickear cualquier dot
+
 #### Persistencia con LocalStorage
 
 **Funcionalidad:**

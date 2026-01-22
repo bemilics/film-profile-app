@@ -104,7 +104,12 @@
             autoSlideEnabled: true,
             hasCompletedCycle: false,
             hasScrolledToResults: false,
-            wasRestoredFromStorage: false
+            wasRestoredFromStorage: false,
+            profileCode: null,
+            view: 'home', // 'home', 'results', 'compatibility-input', 'compatibility-results'
+            compatibilityResult: null,
+            compatibilityUser: null,
+            compatibilityCrush: null
         };
 
         function setState(updates) {
@@ -208,7 +213,29 @@
                 analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
                 const analysis = JSON.parse(analysisText);
-                setState({ result: analysis, loading: false, wasRestoredFromStorage: false });
+
+                // Guardar perfil y obtener código
+                try {
+                    const saveResponse = await fetch('/api/save-profile', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ profile: analysis })
+                    });
+
+                    if (saveResponse.ok) {
+                        const { code } = await saveResponse.json();
+                        setState({ result: analysis, profileCode: code, loading: false, wasRestoredFromStorage: false, view: 'results' });
+                    } else {
+                        // Si falla guardar el código, igual mostramos resultados
+                        setState({ result: analysis, loading: false, wasRestoredFromStorage: false, view: 'results' });
+                    }
+                } catch (codeError) {
+                    console.error('Error saving profile code:', codeError);
+                    // Si falla, igual mostramos resultados sin código
+                    setState({ result: analysis, loading: false, wasRestoredFromStorage: false, view: 'results' });
+                }
             } catch (err) {
                 console.error('Error:', err);
                 setState({
@@ -242,6 +269,30 @@
             }
         }
 
+        async function downloadCompatibilityResult() {
+            const resultCard = document.getElementById('compatibility-result-card');
+            if (!resultCard) return;
+
+            try {
+                const canvas = await html2canvas(resultCard, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
+
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'cinematch-compatibility.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            } catch (err) {
+                console.error('Error generating image:', err);
+            }
+        }
+
         function resetApp() {
             stopAutoSlide();
             stopSwipeIndicatorTimer();
@@ -253,8 +304,157 @@
                 autoSlideEnabled: true,
                 hasCompletedCycle: false,
                 hasScrolledToResults: false,
-                wasRestoredFromStorage: false
+                wasRestoredFromStorage: false,
+                profileCode: null,
+                view: 'home',
+                compatibilityResult: null,
+                compatibilityUser: null,
+                compatibilityCrush: null
             });
+        }
+
+        function copyProfileCode() {
+            if (state.profileCode) {
+                navigator.clipboard.writeText(state.profileCode).then(() => {
+                    const icon = document.getElementById('copy-icon');
+                    if (icon) {
+                        icon.textContent = '✅';
+                        setTimeout(() => {
+                            icon.textContent = '📋';
+                        }, 2000);
+                    }
+                });
+            }
+        }
+
+        function goToCompatibilityMatcher() {
+            setState({
+                view: 'compatibility-input',
+                hasScrolledToResults: false,
+                currentSlide: 0,
+                autoSlideEnabled: true,
+                hasCompletedCycle: false
+            });
+        }
+
+        function handleUserCodeChange(value) {
+            setState({
+                compatibilityUser: {
+                    ...state.compatibilityUser,
+                    code: value.toUpperCase()
+                }
+            });
+        }
+
+        function handleCrushCodeChange(value) {
+            setState({
+                compatibilityCrush: {
+                    ...state.compatibilityCrush,
+                    code: value.toUpperCase()
+                }
+            });
+        }
+
+        function handleUserScreenshotChange(file) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    setState({
+                        compatibilityUser: {
+                            ...state.compatibilityUser,
+                            screenshot: e.target.result
+                        }
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleCrushScreenshotChange(file) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    setState({
+                        compatibilityCrush: {
+                            ...state.compatibilityCrush,
+                            screenshot: e.target.result
+                        }
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function canAnalyzeCompatibility() {
+            const userReady = (state.compatibilityUser?.inputType === 'code' && state.compatibilityUser?.code?.length === 6) ||
+                             (state.compatibilityUser?.inputType === 'screenshot' && state.compatibilityUser?.screenshot);
+
+            const crushReady = (state.compatibilityCrush?.inputType === 'code' && state.compatibilityCrush?.code?.length === 6) ||
+                              (state.compatibilityCrush?.inputType === 'screenshot' && state.compatibilityCrush?.screenshot);
+
+            return userReady && crushReady;
+        }
+
+        async function analyzeCompatibility() {
+            if (!canAnalyzeCompatibility()) return;
+
+            setState({ loading: true, error: null });
+
+            try {
+                // Preparar datos de usuario
+                const userData = {
+                    type: state.compatibilityUser.inputType,
+                    value: state.compatibilityUser.inputType === 'code'
+                        ? state.compatibilityUser.code
+                        : state.compatibilityUser.screenshot.split(',')[1] // base64
+                };
+
+                // Preparar datos de crush
+                const crushData = {
+                    type: state.compatibilityCrush.inputType,
+                    value: state.compatibilityCrush.inputType === 'code'
+                        ? state.compatibilityCrush.code
+                        : state.compatibilityCrush.screenshot.split(',')[1] // base64
+                };
+
+                // Llamar a la API de compatibilidad
+                const response = await fetch('/api/compatibility', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user: userData,
+                        crush: crushData,
+                        useMock: state.useMock
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                let analysisText = data.content.find(item => item.type === 'text')?.text || '';
+                analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+                const compatibilityResult = JSON.parse(analysisText);
+                setState({
+                    compatibilityResult,
+                    loading: false,
+                    view: 'compatibility-results',
+                    currentSlide: 0,
+                    autoSlideEnabled: true,
+                    hasCompletedCycle: false
+                });
+
+            } catch (err) {
+                console.error('Error:', err);
+                setState({
+                    error: 'Error al analizar compatibilidad. Intenta de nuevo.',
+                    loading: false
+                });
+            }
         }
 
         // Slide navigation functions - tiempos mucho más largos
@@ -376,6 +576,165 @@
                 if (state.autoSlideEnabled) {
                     startAutoSlide();
                 }
+            }
+        }
+
+        function getCompatibilitySlideContent(slideIndex, result) {
+            switch(slideIndex) {
+                case 0: // Porcentaje + Arquetipo Relacional
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <h2 class="text-3xl font-bold mb-2 text-[#ff006e]">CINEMATCH</h2>
+                                <p class="text-sm text-gray-400">Análisis de Compatibilidad</p>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e]">
+                                <div class="text-center mb-4">
+                                    <div class="text-6xl font-bold text-[#ff006e] mb-2">${result.compatibility_percentage}%</div>
+                                    <p class="text-xs text-gray-400">COMPATIBILIDAD</p>
+                                </div>
+
+                                <div class="text-center mb-4">
+                                    <div class="text-4xl mb-2">${result.relationship_archetype?.emoji || '🎭'}</div>
+                                    <h3 class="text-xl font-bold text-[#ffd93d] mb-1">
+                                        ${result.relationship_archetype?.title || 'SU ARQUETIPO'}
+                                    </h3>
+                                    <p class="text-xs text-gray-400 italic">
+                                        (${result.relationship_archetype?.subtitle || result.relationship_archetype?.title || 'The Archetype'})
+                                    </p>
+                                </div>
+
+                                <p class="text-sm leading-relaxed text-gray-200">
+                                    ${result.relationship_archetype?.description || ''}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+
+                case 1: // La Primera Cita
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">🎬</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">LA PRIMERA CITA</h3>
+                                <p class="text-xs text-gray-400 mt-1">Una simulación basada en sus perfiles</p>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border border-[#445566]">
+                                <p class="text-sm leading-relaxed text-gray-200">
+                                    ${result.first_date_scenario?.narrative || ''}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+
+                case 2: // Red Flags vs Green Flags
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">⚖️</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">LA DINÁMICA</h3>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#00d9a3]">
+                                    <h4 class="text-sm font-bold text-[#00d9a3] mb-3 flex items-center gap-2">
+                                        <span>✨</span> GREEN FLAGS:
+                                    </h4>
+                                    <div class="space-y-2">
+                                        ${(result.dynamics?.green_flags || []).map(flag => `
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-lg">${flag.emoji}</span>
+                                                <p class="text-sm text-gray-200">${flag.text}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#ff4757]">
+                                    <h4 class="text-sm font-bold text-[#ff4757] mb-3 flex items-center gap-2">
+                                        <span>⚠️</span> RED FLAGS POTENCIALES:
+                                    </h4>
+                                    <div class="space-y-2">
+                                        ${(result.dynamics?.red_flags || []).map(flag => `
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-lg">${flag.emoji}</span>
+                                                <p class="text-sm text-gray-200">${flag.text}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                case 3: // Partner Material o Situationship
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">🔮</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">EL VEREDICTO</h3>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e]">
+                                <div class="text-center mb-4">
+                                    <h4 class="text-3xl font-bold text-white mb-2">
+                                        ${result.verdict?.category || 'Partner Material 💍'}
+                                    </h4>
+                                </div>
+
+                                <p class="text-sm leading-relaxed text-gray-200 mb-4">
+                                    ${result.verdict?.reasoning || ''}
+                                </p>
+
+                                <div class="pt-4 border-t border-[#445566]">
+                                    <p class="text-xs text-gray-400 mb-1">Predicción de timeline:</p>
+                                    <p class="text-sm text-[#ffd93d] font-semibold">
+                                        ${result.verdict?.timeline_prediction || ''}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                case 4: // Películas + Consejo
+                    return `
+                        <div class="h-full flex flex-col justify-center overflow-y-auto">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">🎞️</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">PLAN DE ACCIÓN</h3>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#445566]">
+                                    <h4 class="text-sm font-bold text-[#ffd93d] mb-3">
+                                        🍿 Películas para ver juntos:
+                                    </h4>
+                                    <div class="space-y-3">
+                                        ${(result.action_plan?.movies_to_watch || []).map(movie => `
+                                            <div>
+                                                <p class="text-sm font-semibold text-white">${movie.title}</p>
+                                                <p class="text-xs text-gray-400">${movie.reason}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+
+                                <div class="bg-[#2c3440] rounded-xl p-5 border-2 border-[#ff006e]">
+                                    <h4 class="text-sm font-bold text-[#ff006e] mb-2">
+                                        💡 Consejo final:
+                                    </h4>
+                                    <p class="text-sm leading-relaxed text-gray-200">
+                                        ${result.action_plan?.final_advice || ''}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                default:
+                    return '<div>Slide no encontrada</div>';
             }
         }
 
@@ -551,7 +910,7 @@
                     <p class="text-gray-400 text-lg">Tu Dating Profile Cinematográfico</p>
                 </div>
 
-                ${!state.result ? `
+                ${state.view === 'home' && !state.result ? `
                 <!-- Upload Section -->
                 <div class="bg-[#14181c] rounded-2xl shadow-xl p-8 mb-6 border border-[#2c3440]">
                     <div class="text-center mb-6">
@@ -617,7 +976,7 @@
                 </div>
 
                 <!-- Instructions -->
-                <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border border-[#2c3440]">
+                <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border border-[#2c3440] mb-6">
                     <h3 class="font-bold text-lg mb-3 text-[#ffd93d]">📸 Cómo tomar tu screenshot:</h3>
                     <ol class="space-y-2 text-gray-300">
                         <li>1. Ve a tu perfil de Letterboxd</li>
@@ -626,7 +985,24 @@
                         <li>4. Toma screenshot y súbelo aquí</li>
                     </ol>
                 </div>
-                ` : `
+
+                <!-- Compatibility CTA -->
+                <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border border-[#2c3440]">
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">💘</div>
+                        <h3 class="font-bold text-lg mb-2 text-[#ff006e]">¿Ya tienes tu perfil?</h3>
+                        <p class="text-gray-300 mb-4 text-sm">
+                            Mide tu compatibilidad cinematográfica con alguien más
+                        </p>
+                        <button
+                            onclick="goToCompatibilityMatcher()"
+                            class="w-full bg-[#2c3440] text-[#ff006e] py-3 rounded-xl font-semibold hover:bg-[#3a4554] transition-all border-2 border-[#ff006e]"
+                        >
+                            💘 Medidor de Compatibilidad
+                        </button>
+                    </div>
+                </div>
+                ` : state.view === 'results' ? `
                 <!-- Floating Slide Indicators - Always Visible -->
                 <div class="slide-indicators-floating px-4 pt-3 pb-6">
                     <div class="flex items-center justify-between">
@@ -643,6 +1019,18 @@
                             <span class="text-[#ff006e]">${state.currentSlide + 1}</span><span class="text-gray-500">/${TOTAL_SLIDES}</span>
                         </div>
                     </div>
+                    ${state.profileCode ? `
+                        <div class="mt-3 flex items-center justify-center gap-2">
+                            <button
+                                onclick="copyProfileCode()"
+                                class="bg-[#2c3440] text-[#ffd93d] px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-[#3a4554] transition-all border border-[#ffd93d]"
+                                title="Copiar código"
+                            >
+                                <span>Código: ${state.profileCode}</span>
+                                <span id="copy-icon">📋</span>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
 
                 <!-- Result Card with Slides -->
@@ -690,9 +1078,261 @@
                                 🔄 Hacer Otro
                             </button>
                         </div>
+
+                        <!-- Compatibility CTA -->
+                        <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border-2 border-[#ff006e]">
+                            <div class="text-center">
+                                <div class="text-4xl mb-3">💘</div>
+                                <h3 class="font-bold text-lg mb-2 text-[#ffd93d]">¿Qué tan compatible eres con alguien más?</h3>
+                                <p class="text-gray-300 mb-4 text-sm">
+                                    Mide tu compatibilidad cinematográfica con tu crush
+                                </p>
+                                <button
+                                    onclick="goToCompatibilityMatcher()"
+                                    class="w-full bg-[#ff006e] text-white py-3 rounded-xl font-semibold hover:bg-[#e6006a] transition-all"
+                                >
+                                    💘 Medir Compatibilidad
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                `}
+                ` : state.view === 'compatibility-input' ? `
+                <!-- Compatibility Matcher UI -->
+                <div class="space-y-6">
+                    <div class="text-center mb-8">
+                        <div class="text-5xl mb-3">💘</div>
+                        <h2 class="text-3xl font-bold text-[#ff006e] mb-2">
+                            MEDIDOR DE COMPATIBILIDAD
+                        </h2>
+                        <p class="text-gray-400">Descubre qué tan compatible eres con tu crush</p>
+                    </div>
+
+                    <!-- Tu Perfil -->
+                    <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                        <h3 class="font-bold text-lg mb-4 text-[#ffd93d]">👤 Tu Perfil</h3>
+
+                        <div class="mb-4">
+                            <label class="block text-sm text-gray-400 mb-2">¿Cómo quieres ingresar tu perfil?</label>
+                            <div class="flex gap-4 mb-4">
+                                <button
+                                    onclick="setState({ compatibilityUser: { ...state.compatibilityUser, inputType: 'code' } })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.compatibilityUser?.inputType === 'code' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    📝 Código
+                                </button>
+                                <button
+                                    onclick="setState({ compatibilityUser: { ...state.compatibilityUser, inputType: 'screenshot' } })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.compatibilityUser?.inputType === 'screenshot' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    📸 Screenshot
+                                </button>
+                            </div>
+                        </div>
+
+                        ${state.compatibilityUser?.inputType === 'code' ? `
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Ingresa tu código de 6 dígitos:</label>
+                                <input
+                                    type="text"
+                                    id="user-code-input"
+                                    maxlength="6"
+                                    placeholder="A3K9M2"
+                                    onchange="handleUserCodeChange(this.value)"
+                                    class="w-full px-4 py-3 bg-[#2c3440] rounded-lg text-white font-mono text-lg uppercase focus:outline-none focus:ring-2 focus:ring-[#ff006e]"
+                                />
+                                <p class="text-xs text-gray-500 mt-2">💡 Más rápido y no gasta créditos de API</p>
+                            </div>
+                        ` : state.compatibilityUser?.inputType === 'screenshot' ? `
+                            <div>
+                                <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
+                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <p class="text-sm text-gray-300">
+                                            <span class="font-semibold">Click para subir</span> o arrastra aquí
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        class="hidden"
+                                        accept="image/*"
+                                        id="user-screenshot-input"
+                                        onchange="handleUserScreenshotChange(this.files[0])"
+                                    />
+                                </label>
+                                ${state.compatibilityUser?.screenshot ? `
+                                    <img src="${state.compatibilityUser.screenshot}" alt="Preview" class="mt-3 rounded-lg mx-auto max-h-32 object-contain" />
+                                ` : ''}
+                            </div>
+                        ` : `
+                            <p class="text-center text-gray-500 py-8">Selecciona una opción arriba</p>
+                        `}
+                    </div>
+
+                    <!-- Perfil de Tu Crush -->
+                    <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                        <h3 class="font-bold text-lg mb-4 text-[#ffd93d]">💕 Perfil de la Otra Persona</h3>
+
+                        <div class="mb-4">
+                            <label class="block text-sm text-gray-400 mb-2">¿Cómo quieres ingresar su perfil?</label>
+                            <div class="flex gap-4 mb-4">
+                                <button
+                                    onclick="setState({ compatibilityCrush: { ...state.compatibilityCrush, inputType: 'code' } })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.compatibilityCrush?.inputType === 'code' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    📝 Código
+                                </button>
+                                <button
+                                    onclick="setState({ compatibilityCrush: { ...state.compatibilityCrush, inputType: 'screenshot' } })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.compatibilityCrush?.inputType === 'screenshot' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    📸 Screenshot
+                                </button>
+                            </div>
+                        </div>
+
+                        ${state.compatibilityCrush?.inputType === 'code' ? `
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Ingresa el código de 6 dígitos:</label>
+                                <input
+                                    type="text"
+                                    id="crush-code-input"
+                                    maxlength="6"
+                                    placeholder="B7X4T8"
+                                    onchange="handleCrushCodeChange(this.value)"
+                                    class="w-full px-4 py-3 bg-[#2c3440] rounded-lg text-white font-mono text-lg uppercase focus:outline-none focus:ring-2 focus:ring-[#ff006e]"
+                                />
+                            </div>
+                        ` : state.compatibilityCrush?.inputType === 'screenshot' ? `
+                            <div>
+                                <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
+                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <p class="text-sm text-gray-300">
+                                            <span class="font-semibold">Click para subir</span> o arrastra aquí
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        class="hidden"
+                                        accept="image/*"
+                                        id="crush-screenshot-input"
+                                        onchange="handleCrushScreenshotChange(this.files[0])"
+                                    />
+                                </label>
+                                ${state.compatibilityCrush?.screenshot ? `
+                                    <img src="${state.compatibilityCrush.screenshot}" alt="Preview" class="mt-3 rounded-lg mx-auto max-h-32 object-contain" />
+                                ` : ''}
+                            </div>
+                        ` : `
+                            <p class="text-center text-gray-500 py-8">Selecciona una opción arriba</p>
+                        `}
+                    </div>
+
+                    ${!isProduction ? `
+                        <div class="bg-[#2c3440] border border-[#ffd93d] rounded-xl p-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    id="mock-compatibility-checkbox"
+                                    ${state.useMock ? 'checked' : ''}
+                                    onchange="setState({ useMock: this.checked })"
+                                    class="w-4 h-4 text-[#ffd93d] rounded focus:ring-[#ffd93d]"
+                                />
+                                <span class="text-sm text-[#ffd93d] font-medium">
+                                    🛠️ Modo Debug (usar mock data - solo dev/preview)
+                                </span>
+                            </label>
+                        </div>
+                    ` : ''}
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-3">
+                        <button
+                            onclick="analyzeCompatibility()"
+                            ${state.loading || !canAnalyzeCompatibility() ? 'disabled' : ''}
+                            class="w-full bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            ${state.loading ? '💘 Analizando compatibilidad...' : '💘 Analizar Compatibilidad'}
+                        </button>
+                        <button
+                            onclick="resetApp()"
+                            class="w-full bg-[#2c3440] text-gray-300 py-3 rounded-xl font-semibold hover:bg-[#3a4554] transition-all border border-[#445566]"
+                        >
+                            ← Volver al Inicio
+                        </button>
+                    </div>
+
+                    ${state.error ? `
+                        <div class="p-4 bg-[#2c3440] border border-[#ff4757] rounded-lg text-[#ff4757] text-center">
+                            ${state.error}
+                        </div>
+                    ` : ''}
+                </div>
+                ` : state.view === 'compatibility-results' ? `
+                <!-- Floating Slide Indicators for Compatibility -->
+                <div class="slide-indicators-floating px-4 pt-3 pb-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
+                                <button
+                                    onclick="goToSlide(${i})"
+                                    class="slide-indicator ${i === state.currentSlide ? 'active' : ''} w-3 h-3 rounded-full transition-all cursor-pointer ${i === state.currentSlide ? 'bg-[#ff006e]' : i < state.currentSlide ? 'bg-[#ff006e] opacity-60 hover:opacity-80' : 'bg-[#445566] hover:bg-[#5a6678]'}"
+                                    aria-label="Ir a slide ${i + 1}"
+                                ></button>
+                            `).join('')}
+                        </div>
+                        <div class="text-sm font-bold">
+                            <span class="text-[#ff006e]">${state.currentSlide + 1}</span><span class="text-gray-500">/${TOTAL_SLIDES}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compatibility Result Card with Slides -->
+                <div class="space-y-6">
+                    <div
+                        id="compatibility-result-card"
+                        class="story-card bg-[#14181c] rounded-3xl shadow-2xl overflow-hidden mx-auto border border-[#2c3440] slide-container"
+                        ontouchstart="handleTouchStart(event)"
+                        ontouchmove="handleTouchMove(event)"
+                        ontouchend="handleTouchEnd()"
+                    >
+                        <div class="h-full flex flex-col text-white relative">
+                            <!-- Slide Content -->
+                            <div class="flex-1 p-4 pt-16 slide-content overflow-y-auto">
+                                ${getCompatibilitySlideContent(state.currentSlide, state.compatibilityResult)}
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="text-center py-2 flex-shrink-0 bg-[#14181c]">
+                                <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-4">
+                        <div class="flex gap-4">
+                            <button
+                                onclick="downloadCompatibilityResult()"
+                                class="flex-1 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
+                            >
+                                📱 Descargar para Stories
+                            </button>
+                            <button
+                                onclick="resetApp()"
+                                class="flex-1 bg-[#2c3440] text-gray-300 py-4 rounded-xl font-semibold text-lg hover:bg-[#3a4554] transition-all border border-[#445566]"
+                            >
+                                🔄 Hacer Otro
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
             `;
 
             // Re-attach event listener for file input
@@ -701,14 +1341,25 @@
                 fileInput.addEventListener('change', handleImageUpload);
             }
 
-            // Start auto-slide when result is shown
-            if (state.result && !state.autoSlideTimer) {
+            // Start auto-slide when result is shown (standard or compatibility)
+            if ((state.result || state.compatibilityResult) && !state.autoSlideTimer) {
                 startAutoSlide();
             }
 
             // Auto-scroll to center results when they appear (only once)
             if (state.result && !state.hasScrolledToResults) {
                 const resultCard = document.getElementById('result-card');
+                if (resultCard) {
+                    state.hasScrolledToResults = true;
+                    setTimeout(() => {
+                        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+            }
+
+            // Auto-scroll for compatibility results
+            if (state.compatibilityResult && !state.hasScrolledToResults) {
+                const resultCard = document.getElementById('compatibility-result-card');
                 if (resultCard) {
                     state.hasScrolledToResults = true;
                     setTimeout(() => {
