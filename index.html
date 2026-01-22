@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CINEMATCH - Tu Dating Profile Cinematográfico</title>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-K0R9F71SRB"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-K0R9F71SRB');
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -126,6 +136,24 @@
                               window.location.hostname.includes('-git-'); // Vercel preview deployments
         const isProduction = !isDevelopment;
 
+        // Google Analytics tracking helper
+        function trackEvent(eventName, eventParams = {}) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, eventParams);
+                console.log('[Analytics]', eventName, eventParams);
+            }
+        }
+
+        // Check if user is returning (has visited before)
+        const VISITED_KEY = 'cinematch_visited';
+        const hasVisitedBefore = localStorage.getItem(VISITED_KEY);
+        if (!hasVisitedBefore) {
+            localStorage.setItem(VISITED_KEY, 'true');
+            trackEvent('first_visit');
+        } else {
+            trackEvent('returning_user');
+        }
+
         // State management
         let state = {
             image: null,
@@ -144,14 +172,13 @@
             hasCompletedCycle: false,
             hasScrolledToResults: false,
             wasRestoredFromStorage: false,
-            profileCode: null,
             view: 'home', // 'home', 'results', 'compatibility-input', 'compatibility-results'
+            homeSection: null, // null, 'profile', 'compatibility' - qué sección está expandida
             compatibilityResult: null,
             compatibilityUser: null,
             compatibilityCrush: null,
             pronoun: 'neutro', // 'masculino', 'femenino', 'neutro'
-            crushPronoun: 'neutro', // 'masculino', 'femenino', 'neutro'
-            kvEnabled: null // null = unknown, true = enabled, false = disabled
+            crushPronoun: 'neutro' // 'masculino', 'femenino', 'neutro'
         };
 
         function setState(updates) {
@@ -178,7 +205,6 @@
                     type: 'standard',
                     result: state.result,
                     image: state.image,
-                    profileCode: state.profileCode,
                     timestamp: Date.now()
                 };
                 localStorage.setItem(STORAGE_KEY_STANDARD, JSON.stringify(dataToSave));
@@ -253,11 +279,23 @@
             }
         }
 
+        // Analytics-tracked functions
+        function selectProfileAnalysis() {
+            trackEvent('select_profile_analysis');
+            setState({ homeSection: 'profile' });
+        }
+
+        function selectCompatibilityAnalysis() {
+            trackEvent('select_compatibility_analysis');
+            setState({ homeSection: 'compatibility' });
+        }
+
         function handleImageUpload(e) {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    trackEvent('upload_screenshot_profile');
                     setState({
                         image: e.target.result,
                         result: null,
@@ -272,6 +310,7 @@
         async function analyzeProfile() {
             if (!state.image) return;
 
+            trackEvent('click_analyze_profile');
             setState({ loading: true, error: null });
 
             try {
@@ -301,49 +340,15 @@
 
                 const analysis = JSON.parse(analysisText);
 
-                // Guardar perfil y obtener código
-                console.log('[analyzeProfile] Attempting to save profile and get code...');
-                try {
-                    const saveResponse = await fetch('/api/save-profile', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ profile: analysis })
-                    });
-
-                    console.log('[analyzeProfile] Save response status:', saveResponse.status);
-
-                    if (saveResponse.ok) {
-                        const saveData = await saveResponse.json();
-                        console.log('[analyzeProfile] Received code:', saveData.code);
-                        console.log('[analyzeProfile] KV enabled:', saveData.kvEnabled);
-
-                        if (saveData.warning) {
-                            console.warn('[analyzeProfile] Warning:', saveData.warning);
-                        }
-
-                        setState({
-                            result: analysis,
-                            profileCode: saveData.code,
-                            kvEnabled: saveData.kvEnabled || false,
-                            loading: false,
-                            wasRestoredFromStorage: false,
-                            view: 'results'
-                        });
-
-                        console.log('[analyzeProfile] State updated with profileCode:', saveData.code, 'kvEnabled:', saveData.kvEnabled);
-                    } else {
-                        const errorData = await saveResponse.json();
-                        console.error('[analyzeProfile] Failed to save profile:', errorData);
-                        // Si falla guardar el código, igual mostramos resultados
-                        setState({ result: analysis, loading: false, wasRestoredFromStorage: false, view: 'results' });
-                    }
-                } catch (codeError) {
-                    console.error('[analyzeProfile] Error saving profile code:', codeError);
-                    // Si falla, igual mostramos resultados sin código
-                    setState({ result: analysis, loading: false, wasRestoredFromStorage: false, view: 'results' });
-                }
+                // Mostrar resultados directamente (códigos deshabilitados para soft release)
+                console.log('[analyzeProfile] Analysis complete, showing results');
+                trackEvent('complete_profile_analysis');
+                setState({
+                    result: analysis,
+                    loading: false,
+                    wasRestoredFromStorage: false,
+                    view: 'results'
+                });
             } catch (err) {
                 console.error('Error:', err);
                 setState({
@@ -403,6 +408,12 @@
 
         function resetApp() {
             console.log('Resetting app...');
+            // Track which type of profile is being reset
+            const isCompatibility = state.view === 'compatibility-results';
+            trackEvent('click_reset', {
+                from_view: isCompatibility ? 'compatibility' : 'profile'
+            });
+
             stopAutoSlide();
             stopSwipeIndicatorTimer();
             clearLocalStorage();
@@ -419,47 +430,13 @@
                 hasCompletedCycle: false,
                 hasScrolledToResults: false,
                 wasRestoredFromStorage: false,
-                profileCode: null,
                 view: 'home',
+                homeSection: null,
                 compatibilityResult: null,
                 compatibilityUser: null,
                 compatibilityCrush: null
                 // pronoun y crushPronoun se mantienen para no perder la selección del usuario
             });
-        }
-
-        function copyProfileCode() {
-            if (state.profileCode) {
-                navigator.clipboard.writeText(state.profileCode).then(() => {
-                    console.log('[copyProfileCode] Code copied:', state.profileCode);
-                    const icon = document.getElementById('copy-icon');
-                    if (icon) {
-                        const originalText = icon.textContent;
-                        icon.textContent = '✅';
-
-                        // También cambiar el texto del botón temporalmente
-                        const button = icon.parentElement;
-                        if (button) {
-                            const codeSpan = button.querySelector('span:first-child');
-                            if (codeSpan) {
-                                const originalCode = codeSpan.textContent;
-                                codeSpan.textContent = '¡COPIADO!';
-                                setTimeout(() => {
-                                    codeSpan.textContent = originalCode;
-                                    icon.textContent = originalText;
-                                }, 2000);
-                            } else {
-                                setTimeout(() => {
-                                    icon.textContent = originalText;
-                                }, 2000);
-                            }
-                        }
-                    }
-                }).catch(err => {
-                    console.error('[copyProfileCode] Failed to copy:', err);
-                    alert('No se pudo copiar el código. Por favor, cópialo manualmente: ' + state.profileCode);
-                });
-            }
         }
 
         function goToCompatibilityMatcher() {
@@ -473,71 +450,14 @@
             });
         }
 
-        function setUserInputType(type) {
-            const current = state.compatibilityUser || {};
-            setState({
-                compatibilityUser: {
-                    inputType: type,
-                    // Solo mantener code o screenshot según el tipo
-                    ...(type === 'code' && current.code ? { code: current.code } : {}),
-                    ...(type === 'screenshot' && current.screenshot ? { screenshot: current.screenshot } : {})
-                }
-            });
-        }
-
-        function setCrushInputType(type) {
-            const current = state.compatibilityCrush || {};
-            setState({
-                compatibilityCrush: {
-                    inputType: type,
-                    // Solo mantener code o screenshot según el tipo
-                    ...(type === 'code' && current.code ? { code: current.code } : {}),
-                    ...(type === 'screenshot' && current.screenshot ? { screenshot: current.screenshot } : {})
-                }
-            });
-        }
-
-        function handleUserCodeChange(value) {
-            const upperValue = value.toUpperCase();
-            const newUser = state.compatibilityUser || {};
-            setState({
-                compatibilityUser: {
-                    ...newUser,
-                    inputType: newUser.inputType || 'code',
-                    code: upperValue
-                }
-            });
-            // Update input value to uppercase
-            const input = document.getElementById('user-code-input');
-            if (input && input.value !== upperValue) {
-                input.value = upperValue;
-            }
-        }
-
-        function handleCrushCodeChange(value) {
-            const upperValue = value.toUpperCase();
-            const newCrush = state.compatibilityCrush || {};
-            setState({
-                compatibilityCrush: {
-                    ...newCrush,
-                    inputType: newCrush.inputType || 'code',
-                    code: upperValue
-                }
-            });
-            // Update input value to uppercase
-            const input = document.getElementById('crush-code-input');
-            if (input && input.value !== upperValue) {
-                input.value = upperValue;
-            }
-        }
-
+        // Screenshot handlers para medidor de compatibilidad
         function handleUserScreenshotChange(file) {
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    trackEvent('upload_screenshot_compatibility_user');
                     setState({
                         compatibilityUser: {
-                            ...state.compatibilityUser,
                             screenshot: e.target.result
                         }
                     });
@@ -550,9 +470,9 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    trackEvent('upload_screenshot_compatibility_crush');
                     setState({
                         compatibilityCrush: {
-                            ...state.compatibilityCrush,
                             screenshot: e.target.result
                         }
                     });
@@ -562,56 +482,25 @@
         }
 
         function canAnalyzeCompatibility() {
-            const userReady = (state.compatibilityUser?.inputType === 'code' && state.compatibilityUser?.code?.length === 6) ||
-                             (state.compatibilityUser?.inputType === 'screenshot' && state.compatibilityUser?.screenshot);
-
-            const crushReady = (state.compatibilityCrush?.inputType === 'code' && state.compatibilityCrush?.code?.length === 6) ||
-                              (state.compatibilityCrush?.inputType === 'screenshot' && state.compatibilityCrush?.screenshot);
-
-            // Debug logging
-            if (isDevelopment) {
-                console.log('[canAnalyzeCompatibility]', {
-                    user: {
-                        inputType: state.compatibilityUser?.inputType,
-                        code: state.compatibilityUser?.code,
-                        codeLength: state.compatibilityUser?.code?.length,
-                        hasScreenshot: !!state.compatibilityUser?.screenshot,
-                        ready: userReady
-                    },
-                    crush: {
-                        inputType: state.compatibilityCrush?.inputType,
-                        code: state.compatibilityCrush?.code,
-                        codeLength: state.compatibilityCrush?.code?.length,
-                        hasScreenshot: !!state.compatibilityCrush?.screenshot,
-                        ready: crushReady
-                    },
-                    canAnalyze: userReady && crushReady
-                });
-            }
-
-            return userReady && crushReady;
+            return state.compatibilityUser?.screenshot && state.compatibilityCrush?.screenshot;
         }
 
         async function analyzeCompatibility() {
             if (!canAnalyzeCompatibility()) return;
 
+            trackEvent('click_analyze_compatibility');
             setState({ loading: true, error: null, wasRestoredFromStorage: false });
 
             try {
-                // Preparar datos de usuario
+                // Preparar datos (solo screenshots para soft release)
                 const userData = {
-                    type: state.compatibilityUser.inputType,
-                    value: state.compatibilityUser.inputType === 'code'
-                        ? state.compatibilityUser.code
-                        : state.compatibilityUser.screenshot.split(',')[1] // base64
+                    type: 'screenshot',
+                    value: state.compatibilityUser.screenshot.split(',')[1] // base64
                 };
 
-                // Preparar datos de crush
                 const crushData = {
-                    type: state.compatibilityCrush.inputType,
-                    value: state.compatibilityCrush.inputType === 'code'
-                        ? state.compatibilityCrush.code
-                        : state.compatibilityCrush.screenshot.split(',')[1] // base64
+                    type: 'screenshot',
+                    value: state.compatibilityCrush.screenshot.split(',')[1] // base64
                 };
 
                 // Llamar a la API de compatibilidad
@@ -638,6 +527,7 @@
                 analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
                 const compatibilityResult = JSON.parse(analysisText);
+                trackEvent('complete_compatibility_analysis');
                 setState({
                     compatibilityResult,
                     loading: false,
@@ -673,6 +563,13 @@
         function nextSlide() {
             stopSwipeIndicatorTimer();
             if (state.currentSlide < TOTAL_SLIDES - 1) {
+                const isCompatibility = state.view === 'compatibility-results';
+                trackEvent('swipe_slide', {
+                    direction: 'next',
+                    from_slide: state.currentSlide,
+                    to_slide: state.currentSlide + 1,
+                    profile_type: isCompatibility ? 'compatibility' : 'profile'
+                });
                 setState({
                     currentSlide: state.currentSlide + 1
                 });
@@ -681,6 +578,10 @@
                 }
             } else {
                 // Reached the end, disable auto-slide
+                const isCompatibility = state.view === 'compatibility-results';
+                trackEvent('reach_last_slide', {
+                    profile_type: isCompatibility ? 'compatibility' : 'profile'
+                });
                 setState({ hasCompletedCycle: true, autoSlideEnabled: false });
                 stopAutoSlide();
             }
@@ -689,6 +590,13 @@
         function prevSlide() {
             stopSwipeIndicatorTimer();
             if (state.currentSlide > 0) {
+                const isCompatibility = state.view === 'compatibility-results';
+                trackEvent('swipe_slide', {
+                    direction: 'prev',
+                    from_slide: state.currentSlide,
+                    to_slide: state.currentSlide - 1,
+                    profile_type: isCompatibility ? 'compatibility' : 'profile'
+                });
                 // Going backwards disables auto-slide
                 setState({
                     currentSlide: state.currentSlide - 1,
@@ -1128,125 +1036,165 @@
                 </div>
 
                 ${state.view === 'home' ? `
-                <!-- Pronoun Selection -->
-                <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 mb-6 border border-[#2c3440]">
-                    <div class="text-center mb-4">
-                        <h3 class="font-bold text-lg text-[#ffd93d] mb-2">Pronombres</h3>
-                        <p class="text-sm text-gray-400">¿Cómo quieres que hablemos de ti?</p>
-                    </div>
-                    <div class="flex gap-3">
+                <!-- Main Action Buttons -->
+                ${!state.homeSection ? `
+                    <div class="space-y-4">
                         <button
-                            onclick="setState({ pronoun: 'masculino' })"
-                            class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'masculino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                            onclick="selectProfileAnalysis()"
+                            class="w-full bg-[#ff006e] text-white py-6 rounded-2xl font-bold text-xl hover:bg-[#e6006a] transition-all shadow-xl border-2 border-[#ff006e]"
                         >
-                            Él
+                            🎬 Analizar Mi Perfil
                         </button>
                         <button
-                            onclick="setState({ pronoun: 'femenino' })"
-                            class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'femenino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
-                        >
-                            Ella
-                        </button>
-                        <button
-                            onclick="setState({ pronoun: 'neutro' })"
-                            class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'neutro' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
-                        >
-                            Elle
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Upload Section -->
-                <div class="bg-[#14181c] rounded-2xl shadow-xl p-8 mb-6 border border-[#2c3440]">
-                    <div class="text-center mb-6">
-                        <p class="text-gray-300 mb-4">
-                            Sube un screenshot de tu perfil de Letterboxd con tus 4 películas favoritas y últimas vistas
-                        </p>
-                    </div>
-
-                    <label class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
-                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                            <svg class="w-12 h-12 mb-3 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            <p class="mb-2 text-sm text-gray-300">
-                                <span class="font-semibold">Click para subir</span> o arrastra aquí
-                            </p>
-                            <p class="text-xs text-gray-500">PNG, JPG (MAX. 5MB)</p>
-                        </div>
-                        <input 
-                            type="file" 
-                            class="hidden" 
-                            accept="image/*"
-                            id="file-input"
-                        />
-                    </label>
-
-                    ${state.image ? `
-                        <div class="mt-6">
-                            <img src="${state.image}" alt="Preview" class="rounded-lg mx-auto max-h-64 object-contain" />
-
-                            ${!isProduction ? `
-                                <div class="mt-4 p-3 bg-[#2c3440] border border-[#ffd93d] rounded-lg">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            id="mock-checkbox"
-                                            ${state.useMock ? 'checked' : ''}
-                                            onchange="setState({ useMock: this.checked })"
-                                            class="w-4 h-4 text-[#ffd93d] rounded focus:ring-[#ffd93d]"
-                                        />
-                                        <span class="text-sm text-[#ffd93d] font-medium">
-                                            🛠️ Modo Debug (usar mock data - solo dev/preview)
-                                        </span>
-                                    </label>
-                                </div>
-                            ` : ''}
-
-                            <button
-                                onclick="analyzeProfile()"
-                                ${state.loading ? 'disabled' : ''}
-                                class="w-full mt-4 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                ${state.loading ? '🎬 Analizando tu taste...' : '💘 Generar Mi Perfil'}
-                            </button>
-                        </div>
-                    ` : ''}
-
-                    ${state.error ? `
-                        <div class="mt-4 p-4 bg-[#2c3440] border border-[#ff4757] rounded-lg text-[#ff4757] text-center">
-                            ${state.error}
-                        </div>
-                    ` : ''}
-                </div>
-
-                <!-- Instructions -->
-                <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border border-[#2c3440] mb-6">
-                    <h3 class="font-bold text-lg mb-3 text-[#ffd93d]">📸 Cómo tomar tu screenshot:</h3>
-                    <ol class="space-y-2 text-gray-300">
-                        <li>1. Ve a tu perfil de Letterboxd</li>
-                        <li>2. Asegúrate que se vean tus 4 películas favoritas</li>
-                        <li>3. Asegúrate que se vean tus últimas 4 películas vistas</li>
-                        <li>4. Toma screenshot y súbelo aquí</li>
-                    </ol>
-                </div>
-
-                <!-- Compatibility CTA -->
-                <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border border-[#2c3440]">
-                    <div class="text-center">
-                        <div class="text-4xl mb-3">💘</div>
-                        <h3 class="font-bold text-lg mb-2 text-[#ff006e]">¿Ya tienes tu perfil?</h3>
-                        <p class="text-gray-300 mb-4 text-sm">
-                            Mide tu compatibilidad cinematográfica con alguien más
-                        </p>
-                        <button
-                            onclick="goToCompatibilityMatcher()"
-                            class="w-full bg-[#2c3440] text-[#ff006e] py-3 rounded-xl font-semibold hover:bg-[#3a4554] transition-all border-2 border-[#ff006e]"
+                            onclick="selectCompatibilityAnalysis()"
+                            class="w-full bg-[#14181c] text-[#ff006e] py-6 rounded-2xl font-bold text-xl hover:bg-[#2c3440] transition-all shadow-xl border-2 border-[#ff006e]"
                         >
                             💘 Medidor de Compatibilidad
                         </button>
                     </div>
-                </div>
+                ` : ''}
+
+                <!-- Profile Section (Expanded) -->
+                ${state.homeSection === 'profile' ? `
+                    <div class="space-y-6">
+                        <button
+                            onclick="setState({ homeSection: null, image: null, error: null })"
+                            class="text-gray-400 hover:text-white transition-all flex items-center gap-2"
+                        >
+                            ← Volver
+                        </button>
+
+                        <!-- Pronoun Selection -->
+                        <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                            <div class="text-center mb-4">
+                                <h3 class="font-bold text-lg text-[#ffd93d] mb-2">Pronombres</h3>
+                                <p class="text-sm text-gray-400">¿Cómo quieres que hablemos de ti?</p>
+                            </div>
+                            <div class="flex gap-3">
+                                <button
+                                    onclick="setState({ pronoun: 'masculino' })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'masculino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Él
+                                </button>
+                                <button
+                                    onclick="setState({ pronoun: 'femenino' })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'femenino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Ella
+                                </button>
+                                <button
+                                    onclick="setState({ pronoun: 'neutro' })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'neutro' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Elle
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Upload Section -->
+                        <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                            <div class="text-center mb-4">
+                                <p class="text-gray-300 text-sm">
+                                    Sube un screenshot de tu perfil de Letterboxd
+                                </p>
+                            </div>
+
+                            <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
+                                <div class="flex flex-col items-center justify-center">
+                                    <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p class="text-sm text-gray-300">
+                                        <span class="font-semibold">Click para subir</span>
+                                    </p>
+                                </div>
+                                <input
+                                    type="file"
+                                    class="hidden"
+                                    accept="image/*"
+                                    id="file-input"
+                                />
+                            </label>
+
+                            ${state.image ? `
+                                <div class="mt-4">
+                                    <img src="${state.image}" alt="Preview" class="rounded-lg mx-auto max-h-40 object-contain" />
+
+                                    ${!isProduction ? `
+                                        <div class="mt-3 p-2 bg-[#2c3440] border border-[#ffd93d] rounded-lg">
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    id="mock-checkbox"
+                                                    ${state.useMock ? 'checked' : ''}
+                                                    onchange="setState({ useMock: this.checked })"
+                                                    class="w-4 h-4"
+                                                />
+                                                <span class="text-xs text-[#ffd93d]">
+                                                    🛠️ Debug Mode
+                                                </span>
+                                            </label>
+                                        </div>
+                                    ` : ''}
+
+                                    <button
+                                        onclick="analyzeProfile()"
+                                        ${state.loading ? 'disabled' : ''}
+                                        class="w-full mt-3 bg-[#ff006e] text-white py-3 rounded-xl font-semibold hover:bg-[#e6006a] transition-all disabled:opacity-50"
+                                    >
+                                        ${state.loading ? '🎬 Analizando...' : '💘 Analizar Mi Perfil'}
+                                    </button>
+                                </div>
+                            ` : ''}
+
+                            ${state.error ? `
+                                <div class="mt-3 p-3 bg-[#2c3440] border border-[#ff4757] rounded-lg text-[#ff4757] text-center text-sm">
+                                    ${state.error}
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="bg-[#14181c] rounded-2xl shadow-lg p-4 border border-[#2c3440]">
+                            <h3 class="font-bold text-sm mb-2 text-[#ffd93d]">📸 Cómo tomar tu screenshot:</h3>
+                            <ol class="space-y-1 text-gray-300 text-sm">
+                                <li>1. Ve a tu perfil de Letterboxd</li>
+                                <li>2. Asegúrate que se vean tus 4 películas favoritas</li>
+                                <li>3. Asegúrate que se vean tus últimas 4 películas vistas</li>
+                                <li>4. Toma screenshot y súbelo aquí</li>
+                            </ol>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Compatibility Section (Expanded) -->
+                ${state.homeSection === 'compatibility' ? `
+                    <div class="space-y-6">
+                        <button
+                            onclick="setState({ homeSection: null, compatibilityUser: null, compatibilityCrush: null, error: null })"
+                            class="text-gray-400 hover:text-white transition-all flex items-center gap-2"
+                        >
+                            ← Volver
+                        </button>
+
+                        <div class="text-center">
+                            <div class="text-4xl mb-2">💘</div>
+                            <h2 class="text-2xl font-bold text-[#ff006e] mb-2">
+                                MEDIDOR DE COMPATIBILIDAD
+                            </h2>
+                            <p class="text-gray-400 text-sm">Descubre qué tan compatible eres con tu crush</p>
+                        </div>
+
+                        <!-- Continue to compatibility-input view -->
+                        <button
+                            onclick="goToCompatibilityMatcher()"
+                            class="w-full bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
+                        >
+                            Continuar →
+                        </button>
+                    </div>
+                ` : ''}
                 ` : state.view === 'results' ? `
                 <!-- Floating Slide Indicators - Always Visible -->
                 <div class="slide-indicators-floating px-4 pt-3 pb-6">
@@ -1299,41 +1247,13 @@
                             </button>
 
                             <!-- Slide Content -->
-                            <div class="p-4 pt-16 slide-content overflow-y-auto" style="flex: 1 1 0; min-height: 0;">
+                            <div class="p-4 pt-16 slide-content" style="flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center;">
                                 ${getSlideContent(state.currentSlide, state.result)}
                             </div>
 
                             <!-- Footer -->
-                            <div class="text-center py-4 flex-shrink-0 bg-[#14181c] border-t-2 border-[#2c3440]" style="flex: 0 0 auto;">
-                                ${state.profileCode ? `
-                                    <div class="mb-2 px-4">
-                                        <div class="bg-[#2c3440] rounded-lg p-3 border border-[#ffd93d]">
-                                            <div class="text-xs text-gray-400 mb-1">Tu código de perfil:</div>
-                                            <button
-                                                onclick="copyProfileCode()"
-                                                class="w-full py-2 px-4 bg-[#ffd93d] text-[#0f1419] rounded-md font-mono font-bold text-xl hover:bg-[#ffed93] transition-all active:scale-95 flex items-center justify-center gap-2"
-                                                title="Click para copiar"
-                                            >
-                                                <span>${state.profileCode}</span>
-                                                <span id="copy-icon" class="text-lg">📋</span>
-                                            </button>
-                                            ${state.kvEnabled === false ? `
-                                                <div class="mt-2 text-xs text-[#ff4757]">
-                                                    ⚠️ Código temporal (solo esta sesión)
-                                                </div>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                ` : `
-                                    <div class="mb-2 px-4">
-                                        <div class="bg-[#2c3440] rounded-lg p-3 border border-[#ff4757]">
-                                            <div class="text-xs text-[#ff4757]">
-                                                ⚠️ No se pudo generar código
-                                            </div>
-                                        </div>
-                                    </div>
-                                `}
-                                <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
+                            <div class="text-center py-3 flex-shrink-0 bg-[#14181c] border-t-2 border-[#2c3440]" style="flex: 0 0 auto;">
+                                <p class="text-[9px] text-gray-500">cinematch.app</p>
                             </div>
                         </div>
                     </div>
@@ -1345,23 +1265,6 @@
                                 <p class="text-sm text-[#ffd93d]">
                                     ✨ Tus resultados fueron restaurados
                                 </p>
-                            </div>
-                        ` : ''}
-                        ${state.profileCode && !state.wasRestoredFromStorage ? `
-                            <div class="bg-[#14181c] border-2 border-[#ffd93d] rounded-xl p-4">
-                                <div class="flex items-start gap-3">
-                                    <div class="text-2xl flex-shrink-0">💡</div>
-                                    <div class="flex-1">
-                                        <h4 class="font-bold text-[#ffd93d] mb-1">¡Tu código está listo!</h4>
-                                        <p class="text-xs text-gray-300">
-                                            Tu código <span class="font-mono font-bold text-[#ffd93d]">${state.profileCode}</span> está en el footer de la imagen.
-                                            ${state.kvEnabled ?
-                                                'Compártelo para medir compatibilidad con alguien más.' :
-                                                'Es temporal, usa screenshot si quieres guardarlo.'
-                                            }
-                                        </p>
-                                    </div>
-                                </div>
                             </div>
                         ` : ''}
                         <div class="flex gap-4">
@@ -1439,65 +1342,26 @@
                     <!-- Tu Perfil -->
                     <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
                         <h3 class="font-bold text-lg mb-4 text-[#ffd93d]">👤 Tu Perfil</h3>
-
-                        <div class="mb-4">
-                            <label class="block text-sm text-gray-400 mb-2">¿Cómo quieres ingresar tu perfil?</label>
-                            <div class="flex gap-4 mb-4">
-                                <button
-                                    onclick="setUserInputType('code')"
-                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.compatibilityUser?.inputType === 'code' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
-                                >
-                                    📝 Código
-                                </button>
-                                <button
-                                    onclick="setUserInputType('screenshot')"
-                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.compatibilityUser?.inputType === 'screenshot' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
-                                >
-                                    📸 Screenshot
-                                </button>
+                        <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <p class="text-sm text-gray-300">
+                                    <span class="font-semibold">Sube tu screenshot</span>
+                                </p>
                             </div>
-                        </div>
-
-                        ${state.compatibilityUser?.inputType === 'code' ? `
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-2">Ingresa tu código de 6 dígitos:</label>
-                                <input
-                                    type="text"
-                                    id="user-code-input"
-                                    maxlength="6"
-                                    placeholder="A3K9M2"
-                                    oninput="handleUserCodeChange(this.value)"
-                                    class="w-full px-4 py-3 bg-[#2c3440] rounded-lg text-white font-mono text-lg focus:outline-none focus:ring-2 focus:ring-[#ff006e]"
-                                />
-                                <p class="text-xs text-gray-500 mt-2">💡 Más rápido y no gasta créditos de API</p>
-                                <p class="text-xs text-gray-400 mt-1">El código aparece al generar tu perfil. Si no lo tienes, usa screenshot.</p>
-                            </div>
-                        ` : state.compatibilityUser?.inputType === 'screenshot' ? `
-                            <div>
-                                <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
-                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </svg>
-                                        <p class="text-sm text-gray-300">
-                                            <span class="font-semibold">Click para subir</span> o arrastra aquí
-                                        </p>
-                                    </div>
-                                    <input
-                                        type="file"
-                                        class="hidden"
-                                        accept="image/*"
-                                        id="user-screenshot-input"
-                                        onchange="handleUserScreenshotChange(this.files[0])"
-                                    />
-                                </label>
-                                ${state.compatibilityUser?.screenshot ? `
-                                    <img src="${state.compatibilityUser.screenshot}" alt="Preview" class="mt-3 rounded-lg mx-auto max-h-32 object-contain" />
-                                ` : ''}
-                            </div>
-                        ` : `
-                            <p class="text-center text-gray-500 py-8">Selecciona una opción arriba</p>
-                        `}
+                            <input
+                                type="file"
+                                class="hidden"
+                                accept="image/*"
+                                id="user-screenshot-input"
+                                onchange="handleUserScreenshotChange(this.files[0])"
+                            />
+                        </label>
+                        ${state.compatibilityUser?.screenshot ? `
+                            <img src="${state.compatibilityUser.screenshot}" alt="Preview" class="mt-3 rounded-lg mx-auto max-h-32 object-contain" />
+                        ` : ''}
                     </div>
 
                     <!-- Perfil de Tu Crush -->
@@ -1529,63 +1393,26 @@
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label class="block text-sm text-gray-400 mb-2">¿Cómo quieres ingresar su perfil?</label>
-                            <div class="flex gap-4 mb-4">
-                                <button
-                                    onclick="setCrushInputType('code')"
-                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.compatibilityCrush?.inputType === 'code' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
-                                >
-                                    📝 Código
-                                </button>
-                                <button
-                                    onclick="setCrushInputType('screenshot')"
-                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.compatibilityCrush?.inputType === 'screenshot' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
-                                >
-                                    📸 Screenshot
-                                </button>
+                        <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <p class="text-sm text-gray-300">
+                                    <span class="font-semibold">Sube su screenshot</span>
+                                </p>
                             </div>
-                        </div>
-
-                        ${state.compatibilityCrush?.inputType === 'code' ? `
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-2">Ingresa el código de 6 dígitos:</label>
-                                <input
-                                    type="text"
-                                    id="crush-code-input"
-                                    maxlength="6"
-                                    placeholder="B7X4T8"
-                                    oninput="handleCrushCodeChange(this.value)"
-                                    class="w-full px-4 py-3 bg-[#2c3440] rounded-lg text-white font-mono text-lg focus:outline-none focus:ring-2 focus:ring-[#ff006e]"
-                                />
-                                <p class="text-xs text-gray-400 mt-2">El código aparece al generar el perfil. Si no lo tienes, pídele que te lo comparta o usa screenshot.</p>
-                            </div>
-                        ` : state.compatibilityCrush?.inputType === 'screenshot' ? `
-                            <div>
-                                <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
-                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </svg>
-                                        <p class="text-sm text-gray-300">
-                                            <span class="font-semibold">Click para subir</span> o arrastra aquí
-                                        </p>
-                                    </div>
-                                    <input
-                                        type="file"
-                                        class="hidden"
-                                        accept="image/*"
-                                        id="crush-screenshot-input"
-                                        onchange="handleCrushScreenshotChange(this.files[0])"
-                                    />
-                                </label>
-                                ${state.compatibilityCrush?.screenshot ? `
-                                    <img src="${state.compatibilityCrush.screenshot}" alt="Preview" class="mt-3 rounded-lg mx-auto max-h-32 object-contain" />
-                                ` : ''}
-                            </div>
-                        ` : `
-                            <p class="text-center text-gray-500 py-8">Selecciona una opción arriba</p>
-                        `}
+                            <input
+                                type="file"
+                                class="hidden"
+                                accept="image/*"
+                                id="crush-screenshot-input"
+                                onchange="handleCrushScreenshotChange(this.files[0])"
+                            />
+                        </label>
+                        ${state.compatibilityCrush?.screenshot ? `
+                            <img src="${state.compatibilityCrush.screenshot}" alt="Preview" class="mt-3 rounded-lg mx-auto max-h-32 object-contain" />
+                        ` : ''}
                     </div>
 
                     ${!isProduction ? `
@@ -1680,7 +1507,7 @@
                             </button>
 
                             <!-- Slide Content -->
-                            <div class="p-4 pt-16 slide-content overflow-y-auto" style="flex: 1 1 0; min-height: 0;">
+                            <div class="p-4 pt-16 slide-content" style="flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center;">
                                 ${getCompatibilitySlideContent(state.currentSlide, state.compatibilityResult)}
                             </div>
 
@@ -1761,7 +1588,6 @@
             if (savedData.type === 'standard') {
                 state.result = savedData.result;
                 state.image = savedData.image;
-                state.profileCode = savedData.profileCode;
                 state.view = 'results';
                 state.wasRestoredFromStorage = true;
                 state.hasScrolledToResults = false; // Reset para que auto-scroll funcione
