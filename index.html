@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CINEMATCH - Tu Dating Profile Cinematográfico</title>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-K0R9F71SRB"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-K0R9F71SRB');
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -76,6 +86,43 @@
         .slide-indicators-floating > * {
             pointer-events: auto;
         }
+        .nav-arrow {
+            display: none;
+        }
+        @media (min-width: 640px) {
+            .nav-arrow {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 48px;
+                height: 48px;
+                background: rgba(255, 0, 110, 0.9);
+                border-radius: 50%;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                z-index: 50;
+            }
+            .nav-arrow:hover {
+                background: rgba(255, 0, 110, 1);
+                transform: translateY(-50%) scale(1.1);
+            }
+            .nav-arrow:disabled {
+                opacity: 0.3;
+                cursor: not-allowed;
+            }
+            .nav-arrow:disabled:hover {
+                transform: translateY(-50%) scale(1);
+            }
+            .nav-arrow-left {
+                left: -24px;
+            }
+            .nav-arrow-right {
+                right: -24px;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#0f1419] min-h-screen">
@@ -89,6 +136,24 @@
                               window.location.hostname.includes('-git-'); // Vercel preview deployments
         const isProduction = !isDevelopment;
 
+        // Google Analytics tracking helper
+        function trackEvent(eventName, eventParams = {}) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, eventParams);
+                console.log('[Analytics]', eventName, eventParams);
+            }
+        }
+
+        // Check if user is returning (has visited before)
+        const VISITED_KEY = 'cinematch_visited';
+        const hasVisitedBefore = localStorage.getItem(VISITED_KEY);
+        if (!hasVisitedBefore) {
+            localStorage.setItem(VISITED_KEY, 'true');
+            trackEvent('first_visit');
+        } else {
+            trackEvent('returning_user');
+        }
+
         // State management
         let state = {
             image: null,
@@ -101,52 +166,101 @@
             swipeIndicatorTimer: null,
             touchStartX: 0,
             touchEndX: 0,
+            touchStartY: 0,
+            touchEndY: 0,
             autoSlideEnabled: true,
             hasCompletedCycle: false,
             hasScrolledToResults: false,
-            wasRestoredFromStorage: false
+            wasRestoredFromStorage: false,
+            view: 'home', // 'home', 'results', 'compatibility-input', 'compatibility-results'
+            homeSection: null, // null, 'profile', 'compatibility' - qué sección está expandida
+            compatibilityResult: null,
+            compatibilityUser: null,
+            compatibilityCrush: null,
+            pronoun: 'neutro', // 'masculino', 'femenino', 'neutro'
+            crushPronoun: 'neutro' // 'masculino', 'femenino', 'neutro'
         };
 
         function setState(updates) {
             state = { ...state, ...updates };
             render();
-            // Save to localStorage when result changes
-            if (updates.result !== undefined) {
-                saveToLocalStorage();
+
+            // Save to localStorage when results change
+            if (updates.result !== undefined && state.view === 'results') {
+                saveStandardToLocalStorage();
+            }
+            if (updates.compatibilityResult !== undefined && state.view === 'compatibility-results') {
+                saveCompatibilityToLocalStorage();
             }
         }
 
-        // LocalStorage functions
-        const STORAGE_KEY = 'cinematch_results';
+        // LocalStorage functions - Rediseñadas para soportar 2 tipos de resultados
+        const STORAGE_KEY_STANDARD = 'cinematch_standard_results';
+        const STORAGE_KEY_COMPATIBILITY = 'cinematch_compatibility_results';
+        const STORAGE_EXPIRATION_DAYS = 7;
 
-        function saveToLocalStorage() {
+        function saveStandardToLocalStorage() {
             try {
                 const dataToSave = {
+                    type: 'standard',
                     result: state.result,
                     image: state.image,
                     timestamp: Date.now()
                 };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+                localStorage.setItem(STORAGE_KEY_STANDARD, JSON.stringify(dataToSave));
+                console.log('Standard results saved to localStorage');
             } catch (error) {
-                console.error('Error saving to localStorage:', error);
+                console.error('Error saving standard results:', error);
+            }
+        }
+
+        function saveCompatibilityToLocalStorage() {
+            try {
+                const dataToSave = {
+                    type: 'compatibility',
+                    compatibilityResult: state.compatibilityResult,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(STORAGE_KEY_COMPATIBILITY, JSON.stringify(dataToSave));
+                console.log('Compatibility results saved to localStorage');
+            } catch (error) {
+                console.error('Error saving compatibility results:', error);
             }
         }
 
         function loadFromLocalStorage() {
+            const expirationMs = STORAGE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+
             try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    // Only load if less than 7 days old
-                    const sevenDays = 7 * 24 * 60 * 60 * 1000;
-                    if (Date.now() - data.timestamp < sevenDays) {
+                // Intentar cargar resultados standard
+                const savedStandard = localStorage.getItem(STORAGE_KEY_STANDARD);
+                if (savedStandard) {
+                    const data = JSON.parse(savedStandard);
+                    if (Date.now() - data.timestamp < expirationMs) {
+                        console.log('Loading standard results from localStorage');
                         return {
+                            type: 'standard',
                             result: data.result,
-                            image: data.image
+                            image: data.image,
+                            profileCode: data.profileCode
                         };
                     } else {
-                        // Clear old data
-                        localStorage.removeItem(STORAGE_KEY);
+                        localStorage.removeItem(STORAGE_KEY_STANDARD);
+                    }
+                }
+
+                // Intentar cargar resultados de compatibilidad
+                const savedCompatibility = localStorage.getItem(STORAGE_KEY_COMPATIBILITY);
+                if (savedCompatibility) {
+                    const data = JSON.parse(savedCompatibility);
+                    if (Date.now() - data.timestamp < expirationMs) {
+                        console.log('Loading compatibility results from localStorage');
+                        return {
+                            type: 'compatibility',
+                            compatibilityResult: data.compatibilityResult
+                        };
+                    } else {
+                        localStorage.removeItem(STORAGE_KEY_COMPATIBILITY);
                     }
                 }
             } catch (error) {
@@ -157,10 +271,23 @@
 
         function clearLocalStorage() {
             try {
-                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(STORAGE_KEY_STANDARD);
+                localStorage.removeItem(STORAGE_KEY_COMPATIBILITY);
+                console.log('localStorage cleared');
             } catch (error) {
                 console.error('Error clearing localStorage:', error);
             }
+        }
+
+        // Analytics-tracked functions
+        function selectProfileAnalysis() {
+            trackEvent('select_profile_analysis');
+            setState({ homeSection: 'profile' });
+        }
+
+        function selectCompatibilityAnalysis() {
+            trackEvent('select_compatibility_analysis');
+            setState({ homeSection: 'compatibility' });
         }
 
         function handleImageUpload(e) {
@@ -168,10 +295,12 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    setState({ 
-                        image: e.target.result, 
-                        result: null, 
-                        error: null 
+                    trackEvent('upload_screenshot_profile');
+                    setState({
+                        image: e.target.result,
+                        result: null,
+                        error: null,
+                        wasRestoredFromStorage: false
                     });
                 };
                 reader.readAsDataURL(file);
@@ -181,6 +310,7 @@
         async function analyzeProfile() {
             if (!state.image) return;
 
+            trackEvent('click_analyze_profile');
             setState({ loading: true, error: null });
 
             try {
@@ -194,7 +324,8 @@
                     },
                     body: JSON.stringify({
                         imageData: base64Data,
-                        useMock: state.useMock
+                        useMock: state.useMock,
+                        pronoun: state.pronoun
                     })
                 });
 
@@ -208,7 +339,16 @@
                 analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
                 const analysis = JSON.parse(analysisText);
-                setState({ result: analysis, loading: false, wasRestoredFromStorage: false });
+
+                // Mostrar resultados directamente (códigos deshabilitados para soft release)
+                console.log('[analyzeProfile] Analysis complete, showing results');
+                trackEvent('complete_profile_analysis');
+                setState({
+                    result: analysis,
+                    loading: false,
+                    wasRestoredFromStorage: false,
+                    view: 'results'
+                });
             } catch (err) {
                 console.error('Error:', err);
                 setState({
@@ -242,19 +382,178 @@
             }
         }
 
+        async function downloadCompatibilityResult() {
+            const resultCard = document.getElementById('compatibility-result-card');
+            if (!resultCard) return;
+
+            try {
+                const canvas = await html2canvas(resultCard, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
+
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'cinematch-compatibility.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            } catch (err) {
+                console.error('Error generating image:', err);
+            }
+        }
+
         function resetApp() {
+            console.log('Resetting app...');
+            // Track which type of profile is being reset
+            const isCompatibility = state.view === 'compatibility-results';
+            trackEvent('click_reset', {
+                from_view: isCompatibility ? 'compatibility' : 'profile'
+            });
+
             stopAutoSlide();
             stopSwipeIndicatorTimer();
             clearLocalStorage();
+
+            // Reset completo del state a valores iniciales
             setState({
-                result: null,
                 image: null,
+                loading: false,
+                result: null,
+                error: null,
+                useMock: false,
                 currentSlide: 0,
                 autoSlideEnabled: true,
                 hasCompletedCycle: false,
                 hasScrolledToResults: false,
+                wasRestoredFromStorage: false,
+                view: 'home',
+                homeSection: null,
+                compatibilityResult: null,
+                compatibilityUser: null,
+                compatibilityCrush: null
+                // pronoun y crushPronoun se mantienen para no perder la selección del usuario
+            });
+        }
+
+        function goToCompatibilityMatcher() {
+            setState({
+                view: 'compatibility-input',
+                hasScrolledToResults: false,
+                currentSlide: 0,
+                autoSlideEnabled: true,
+                hasCompletedCycle: false,
                 wasRestoredFromStorage: false
             });
+        }
+
+        // Screenshot handlers para medidor de compatibilidad
+        function handleUserScreenshotChange(file) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    trackEvent('upload_screenshot_compatibility_user');
+                    setState({
+                        compatibilityUser: {
+                            screenshot: e.target.result
+                        }
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleCrushScreenshotChange(file) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    trackEvent('upload_screenshot_compatibility_crush');
+                    setState({
+                        compatibilityCrush: {
+                            screenshot: e.target.result
+                        }
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function canAnalyzeCompatibility() {
+            return state.compatibilityUser?.screenshot && state.compatibilityCrush?.screenshot;
+        }
+
+        async function analyzeCompatibility() {
+            if (!canAnalyzeCompatibility()) return;
+
+            trackEvent('click_analyze_compatibility');
+            setState({ loading: true, error: null, wasRestoredFromStorage: false });
+
+            try {
+                // Preparar datos (solo screenshots para soft release)
+                const userData = {
+                    type: 'screenshot',
+                    value: state.compatibilityUser.screenshot.split(',')[1] // base64
+                };
+
+                const crushData = {
+                    type: 'screenshot',
+                    value: state.compatibilityCrush.screenshot.split(',')[1] // base64
+                };
+
+                // Llamar a la API de compatibilidad
+                const response = await fetch('/api/compatibility', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user: userData,
+                        crush: crushData,
+                        useMock: state.useMock,
+                        pronoun: state.pronoun,
+                        crushPronoun: state.crushPronoun
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                let analysisText = data.content.find(item => item.type === 'text')?.text || '';
+                analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+                const compatibilityResult = JSON.parse(analysisText);
+                trackEvent('complete_compatibility_analysis');
+                setState({
+                    compatibilityResult,
+                    loading: false,
+                    view: 'compatibility-results',
+                    currentSlide: 0,
+                    autoSlideEnabled: true,
+                    hasCompletedCycle: false
+                });
+
+            } catch (err) {
+                console.error('[analyzeCompatibility] Error:', err);
+
+                let errorMessage = 'Error al analizar compatibilidad. Intenta de nuevo.';
+
+                // Check if it's a KV error
+                if (err.message && err.message.includes('503')) {
+                    errorMessage = '⚠️ Los códigos no están disponibles en este momento. Por favor, usa screenshots en su lugar.';
+                } else if (err.message && err.message.includes('404')) {
+                    errorMessage = '❌ Uno o ambos códigos no fueron encontrados. Verifica que sean correctos o usa screenshots.';
+                }
+
+                setState({
+                    error: errorMessage,
+                    loading: false
+                });
+            }
         }
 
         // Slide navigation functions - tiempos mucho más largos
@@ -264,6 +563,13 @@
         function nextSlide() {
             stopSwipeIndicatorTimer();
             if (state.currentSlide < TOTAL_SLIDES - 1) {
+                const isCompatibility = state.view === 'compatibility-results';
+                trackEvent('swipe_slide', {
+                    direction: 'next',
+                    from_slide: state.currentSlide,
+                    to_slide: state.currentSlide + 1,
+                    profile_type: isCompatibility ? 'compatibility' : 'profile'
+                });
                 setState({
                     currentSlide: state.currentSlide + 1
                 });
@@ -272,6 +578,10 @@
                 }
             } else {
                 // Reached the end, disable auto-slide
+                const isCompatibility = state.view === 'compatibility-results';
+                trackEvent('reach_last_slide', {
+                    profile_type: isCompatibility ? 'compatibility' : 'profile'
+                });
                 setState({ hasCompletedCycle: true, autoSlideEnabled: false });
                 stopAutoSlide();
             }
@@ -280,6 +590,13 @@
         function prevSlide() {
             stopSwipeIndicatorTimer();
             if (state.currentSlide > 0) {
+                const isCompatibility = state.view === 'compatibility-results';
+                trackEvent('swipe_slide', {
+                    direction: 'prev',
+                    from_slide: state.currentSlide,
+                    to_slide: state.currentSlide - 1,
+                    profile_type: isCompatibility ? 'compatibility' : 'profile'
+                });
                 // Going backwards disables auto-slide
                 setState({
                     currentSlide: state.currentSlide - 1,
@@ -349,22 +666,30 @@
 
         function handleTouchStart(e) {
             state.touchStartX = e.touches[0].clientX;
+            state.touchStartY = e.touches[0].clientY;
             stopAutoSlide();
         }
 
         function handleTouchMove(e) {
             state.touchEndX = e.touches[0].clientX;
+            state.touchEndY = e.touches[0].clientY;
         }
 
         function handleTouchEnd() {
-            const swipeThreshold = 50;
-            const diff = state.touchStartX - state.touchEndX;
+            const swipeThreshold = 80; // Aumentado de 50 a 80px para reducir sensibilidad
+            const diffX = state.touchStartX - state.touchEndX;
+            const diffY = state.touchStartY - state.touchEndY;
 
-            if (Math.abs(diff) > swipeThreshold) {
+            const absX = Math.abs(diffX);
+            const absY = Math.abs(diffY);
+
+            // Solo hacer swipe si el movimiento horizontal es mayor que el vertical
+            // Y si supera el threshold
+            if (absX > swipeThreshold && absX > absY * 1.5) {
                 // User swiped manually - disable auto-slide
                 stopSwipeIndicatorTimer();
                 setState({ autoSlideEnabled: false });
-                if (diff > 0) {
+                if (diffX > 0) {
                     // Swipe left - next slide
                     nextSlide();
                 } else {
@@ -376,6 +701,165 @@
                 if (state.autoSlideEnabled) {
                     startAutoSlide();
                 }
+            }
+        }
+
+        function getCompatibilitySlideContent(slideIndex, result) {
+            switch(slideIndex) {
+                case 0: // Porcentaje + Arquetipo Relacional
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <h2 class="text-3xl font-bold mb-2 text-[#ff006e]">CINEMATCH</h2>
+                                <p class="text-sm text-gray-400">Análisis de Compatibilidad</p>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e]">
+                                <div class="text-center mb-4">
+                                    <div class="text-6xl font-bold text-[#ff006e] mb-2">${result.compatibility_percentage}%</div>
+                                    <p class="text-xs text-gray-400">COMPATIBILIDAD</p>
+                                </div>
+
+                                <div class="text-center mb-4">
+                                    <div class="text-4xl mb-2">${result.relationship_archetype?.emoji || '🎭'}</div>
+                                    <h3 class="text-xl font-bold text-[#ffd93d] mb-1">
+                                        ${result.relationship_archetype?.title || 'SU ARQUETIPO'}
+                                    </h3>
+                                    <p class="text-xs text-gray-400 italic">
+                                        (${result.relationship_archetype?.subtitle || result.relationship_archetype?.title || 'The Archetype'})
+                                    </p>
+                                </div>
+
+                                <p class="text-sm leading-relaxed text-gray-200">
+                                    ${result.relationship_archetype?.description || ''}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+
+                case 1: // La Primera Cita
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">🎬</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">LA PRIMERA CITA</h3>
+                                <p class="text-xs text-gray-400 mt-1">Una simulación basada en sus perfiles</p>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border border-[#445566]">
+                                <p class="text-sm leading-relaxed text-gray-200">
+                                    ${result.first_date_scenario?.narrative || ''}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+
+                case 2: // Red Flags vs Green Flags
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">⚖️</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">LA DINÁMICA</h3>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#00d9a3]">
+                                    <h4 class="text-sm font-bold text-[#00d9a3] mb-3 flex items-center gap-2">
+                                        <span>✨</span> GREEN FLAGS:
+                                    </h4>
+                                    <div class="space-y-2">
+                                        ${(result.dynamics?.green_flags || []).map(flag => `
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-lg">${flag.emoji}</span>
+                                                <p class="text-sm text-gray-200">${flag.text}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#ff4757]">
+                                    <h4 class="text-sm font-bold text-[#ff4757] mb-3 flex items-center gap-2">
+                                        <span>⚠️</span> RED FLAGS POTENCIALES:
+                                    </h4>
+                                    <div class="space-y-2">
+                                        ${(result.dynamics?.red_flags || []).map(flag => `
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-lg">${flag.emoji}</span>
+                                                <p class="text-sm text-gray-200">${flag.text}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                case 3: // Partner Material o Situationship
+                    return `
+                        <div class="h-full flex flex-col justify-center">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">🔮</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">EL VEREDICTO</h3>
+                            </div>
+
+                            <div class="bg-[#2c3440] rounded-2xl p-6 border-2 border-[#ff006e]">
+                                <div class="text-center mb-4">
+                                    <h4 class="text-3xl font-bold text-white mb-2">
+                                        ${result.verdict?.category || 'Partner Material 💍'}
+                                    </h4>
+                                </div>
+
+                                <p class="text-sm leading-relaxed text-gray-200 mb-4">
+                                    ${result.verdict?.reasoning || ''}
+                                </p>
+
+                                <div class="pt-4 border-t border-[#445566]">
+                                    <p class="text-xs text-gray-400 mb-1">Predicción de timeline:</p>
+                                    <p class="text-sm text-[#ffd93d] font-semibold">
+                                        ${result.verdict?.timeline_prediction || ''}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                case 4: // Películas + Consejo
+                    return `
+                        <div class="h-full flex flex-col justify-center overflow-y-auto">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl mb-2">🎞️</div>
+                                <h3 class="text-2xl font-bold text-[#ffd93d]">PLAN DE ACCIÓN</h3>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="bg-[#2c3440] rounded-xl p-5 border border-[#445566]">
+                                    <h4 class="text-sm font-bold text-[#ffd93d] mb-3">
+                                        🍿 Películas para ver juntos:
+                                    </h4>
+                                    <div class="space-y-3">
+                                        ${(result.action_plan?.movies_to_watch || []).map(movie => `
+                                            <div>
+                                                <p class="text-sm font-semibold text-white">${movie.title}</p>
+                                                <p class="text-xs text-gray-400">${movie.reason}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+
+                                <div class="bg-[#2c3440] rounded-xl p-5 border-2 border-[#ff006e]">
+                                    <h4 class="text-sm font-bold text-[#ff006e] mb-2">
+                                        💡 Consejo final:
+                                    </h4>
+                                    <p class="text-sm leading-relaxed text-gray-200">
+                                        ${result.action_plan?.final_advice || ''}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                default:
+                    return '<div>Slide no encontrada</div>';
             }
         }
 
@@ -551,82 +1035,167 @@
                     <p class="text-gray-400 text-lg">Tu Dating Profile Cinematográfico</p>
                 </div>
 
-                ${!state.result ? `
-                <!-- Upload Section -->
-                <div class="bg-[#14181c] rounded-2xl shadow-xl p-8 mb-6 border border-[#2c3440]">
-                    <div class="text-center mb-6">
-                        <p class="text-gray-300 mb-4">
-                            Sube un screenshot de tu perfil de Letterboxd con tus 4 películas favoritas y últimas vistas
-                        </p>
+                ${state.view === 'home' ? `
+                <!-- Main Action Buttons -->
+                ${!state.homeSection ? `
+                    <div class="space-y-4">
+                        <button
+                            onclick="selectProfileAnalysis()"
+                            class="w-full bg-[#ff006e] text-white py-6 rounded-2xl font-bold text-xl hover:bg-[#e6006a] transition-all shadow-xl border-2 border-[#ff006e]"
+                        >
+                            🎬 Analizar Mi Perfil
+                        </button>
+                        <button
+                            onclick="selectCompatibilityAnalysis()"
+                            class="w-full bg-[#14181c] text-[#ff006e] py-6 rounded-2xl font-bold text-xl hover:bg-[#2c3440] transition-all shadow-xl border-2 border-[#ff006e]"
+                        >
+                            💘 Medidor de Compatibilidad
+                        </button>
                     </div>
+                ` : ''}
 
-                    <label class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
-                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                            <svg class="w-12 h-12 mb-3 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            <p class="mb-2 text-sm text-gray-300">
-                                <span class="font-semibold">Click para subir</span> o arrastra aquí
-                            </p>
-                            <p class="text-xs text-gray-500">PNG, JPG (MAX. 5MB)</p>
+                <!-- Profile Section (Expanded) -->
+                ${state.homeSection === 'profile' ? `
+                    <div class="space-y-6">
+                        <button
+                            onclick="setState({ homeSection: null, image: null, error: null })"
+                            class="text-gray-400 hover:text-white transition-all flex items-center gap-2"
+                        >
+                            ← Volver
+                        </button>
+
+                        <!-- Pronoun Selection -->
+                        <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                            <div class="text-center mb-4">
+                                <h3 class="font-bold text-lg text-[#ffd93d] mb-2">Pronombres</h3>
+                                <p class="text-sm text-gray-400">¿Cómo quieres que hablemos de ti?</p>
+                            </div>
+                            <div class="flex gap-3">
+                                <button
+                                    onclick="setState({ pronoun: 'masculino' })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'masculino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Él
+                                </button>
+                                <button
+                                    onclick="setState({ pronoun: 'femenino' })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'femenino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Ella
+                                </button>
+                                <button
+                                    onclick="setState({ pronoun: 'neutro' })"
+                                    class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'neutro' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Elle
+                                </button>
+                            </div>
                         </div>
-                        <input 
-                            type="file" 
-                            class="hidden" 
-                            accept="image/*"
-                            id="file-input"
-                        />
-                    </label>
 
-                    ${state.image ? `
-                        <div class="mt-6">
-                            <img src="${state.image}" alt="Preview" class="rounded-lg mx-auto max-h-64 object-contain" />
+                        <!-- Upload Section -->
+                        <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                            <div class="text-center mb-4">
+                                <p class="text-gray-300 text-sm">
+                                    Sube un screenshot de tu perfil de Letterboxd
+                                </p>
+                            </div>
 
-                            ${!isProduction ? `
-                                <div class="mt-4 p-3 bg-[#2c3440] border border-[#ffd93d] rounded-lg">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            id="mock-checkbox"
-                                            ${state.useMock ? 'checked' : ''}
-                                            onchange="setState({ useMock: this.checked })"
-                                            class="w-4 h-4 text-[#ffd93d] rounded focus:ring-[#ffd93d]"
-                                        />
-                                        <span class="text-sm text-[#ffd93d] font-medium">
-                                            🛠️ Modo Debug (usar mock data - solo dev/preview)
-                                        </span>
-                                    </label>
+                            <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
+                                <div class="flex flex-col items-center justify-center">
+                                    <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p class="text-sm text-gray-300">
+                                        <span class="font-semibold">Click para subir</span>
+                                    </p>
+                                </div>
+                                <input
+                                    type="file"
+                                    class="hidden"
+                                    accept="image/*"
+                                    id="file-input"
+                                />
+                            </label>
+
+                            ${state.image ? `
+                                <div class="mt-4">
+                                    <img src="${state.image}" alt="Preview" class="rounded-lg mx-auto max-h-40 object-contain" />
+
+                                    ${!isProduction ? `
+                                        <div class="mt-3 p-2 bg-[#2c3440] border border-[#ffd93d] rounded-lg">
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    id="mock-checkbox"
+                                                    ${state.useMock ? 'checked' : ''}
+                                                    onchange="setState({ useMock: this.checked })"
+                                                    class="w-4 h-4"
+                                                />
+                                                <span class="text-xs text-[#ffd93d]">
+                                                    🛠️ Debug Mode
+                                                </span>
+                                            </label>
+                                        </div>
+                                    ` : ''}
+
+                                    <button
+                                        onclick="analyzeProfile()"
+                                        ${state.loading ? 'disabled' : ''}
+                                        class="w-full mt-3 bg-[#ff006e] text-white py-3 rounded-xl font-semibold hover:bg-[#e6006a] transition-all disabled:opacity-50"
+                                    >
+                                        ${state.loading ? '🎬 Analizando...' : '💘 Analizar Mi Perfil'}
+                                    </button>
                                 </div>
                             ` : ''}
 
-                            <button
-                                onclick="analyzeProfile()"
-                                ${state.loading ? 'disabled' : ''}
-                                class="w-full mt-4 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                ${state.loading ? '🎬 Analizando tu taste...' : '💘 Generar Mi Perfil'}
-                            </button>
+                            ${state.error ? `
+                                <div class="mt-3 p-3 bg-[#2c3440] border border-[#ff4757] rounded-lg text-[#ff4757] text-center text-sm">
+                                    ${state.error}
+                                </div>
+                            ` : ''}
                         </div>
-                    ` : ''}
 
-                    ${state.error ? `
-                        <div class="mt-4 p-4 bg-[#2c3440] border border-[#ff4757] rounded-lg text-[#ff4757] text-center">
-                            ${state.error}
+                        <!-- Instructions -->
+                        <div class="bg-[#14181c] rounded-2xl shadow-lg p-4 border border-[#2c3440]">
+                            <h3 class="font-bold text-sm mb-2 text-[#ffd93d]">📸 Cómo tomar tu screenshot:</h3>
+                            <ol class="space-y-1 text-gray-300 text-sm">
+                                <li>1. Ve a tu perfil de Letterboxd</li>
+                                <li>2. Asegúrate que se vean tus 4 películas favoritas</li>
+                                <li>3. Asegúrate que se vean tus últimas 4 películas vistas</li>
+                                <li>4. Toma screenshot y súbelo aquí</li>
+                            </ol>
                         </div>
-                    ` : ''}
-                </div>
+                    </div>
+                ` : ''}
 
-                <!-- Instructions -->
-                <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border border-[#2c3440]">
-                    <h3 class="font-bold text-lg mb-3 text-[#ffd93d]">📸 Cómo tomar tu screenshot:</h3>
-                    <ol class="space-y-2 text-gray-300">
-                        <li>1. Ve a tu perfil de Letterboxd</li>
-                        <li>2. Asegúrate que se vean tus 4 películas favoritas</li>
-                        <li>3. Asegúrate que se vean tus últimas 4 películas vistas</li>
-                        <li>4. Toma screenshot y súbelo aquí</li>
-                    </ol>
-                </div>
-                ` : `
+                <!-- Compatibility Section (Expanded) -->
+                ${state.homeSection === 'compatibility' ? `
+                    <div class="space-y-6">
+                        <button
+                            onclick="setState({ homeSection: null, compatibilityUser: null, compatibilityCrush: null, error: null })"
+                            class="text-gray-400 hover:text-white transition-all flex items-center gap-2"
+                        >
+                            ← Volver
+                        </button>
+
+                        <div class="text-center">
+                            <div class="text-4xl mb-2">💘</div>
+                            <h2 class="text-2xl font-bold text-[#ff006e] mb-2">
+                                MEDIDOR DE COMPATIBILIDAD
+                            </h2>
+                            <p class="text-gray-400 text-sm">Descubre qué tan compatible eres con tu crush</p>
+                        </div>
+
+                        <!-- Continue to compatibility-input view -->
+                        <button
+                            onclick="goToCompatibilityMatcher()"
+                            class="w-full bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
+                        >
+                            Continuar →
+                        </button>
+                    </div>
+                ` : ''}
+                ` : state.view === 'results' ? `
                 <!-- Floating Slide Indicators - Always Visible -->
                 <div class="slide-indicators-floating px-4 pt-3 pb-6">
                     <div class="flex items-center justify-between">
@@ -655,14 +1224,36 @@
                         ontouchend="handleTouchEnd()"
                     >
                         <div class="h-full flex flex-col text-white relative">
+                            <!-- Navigation Arrows (Desktop only) -->
+                            <button
+                                onclick="prevSlide()"
+                                ${state.currentSlide === 0 ? 'disabled' : ''}
+                                class="nav-arrow nav-arrow-left"
+                                aria-label="Slide anterior"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <button
+                                onclick="nextSlide()"
+                                ${state.currentSlide === TOTAL_SLIDES - 1 ? 'disabled' : ''}
+                                class="nav-arrow nav-arrow-right"
+                                aria-label="Siguiente slide"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+
                             <!-- Slide Content -->
-                            <div class="flex-1 p-4 pt-16 slide-content overflow-y-auto">
+                            <div class="p-4 pt-16 slide-content" style="flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center;">
                                 ${getSlideContent(state.currentSlide, state.result)}
                             </div>
 
                             <!-- Footer -->
-                            <div class="text-center py-2 flex-shrink-0 bg-[#14181c]">
-                                <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
+                            <div class="text-center py-3 flex-shrink-0 bg-[#14181c] border-t-2 border-[#2c3440]" style="flex: 0 0 auto;">
+                                <p class="text-[9px] text-gray-500">cinematch.app</p>
                             </div>
                         </div>
                     </div>
@@ -690,9 +1281,269 @@
                                 🔄 Hacer Otro
                             </button>
                         </div>
+
+                        <!-- Compatibility CTA -->
+                        <div class="bg-[#14181c] rounded-2xl shadow-lg p-6 border-2 border-[#ff006e]">
+                            <div class="text-center">
+                                <div class="text-4xl mb-3">💘</div>
+                                <h3 class="font-bold text-lg mb-2 text-[#ffd93d]">¿Qué tan compatible eres con alguien más?</h3>
+                                <p class="text-gray-300 mb-4 text-sm">
+                                    Mide tu compatibilidad cinematográfica con tu crush
+                                </p>
+                                <button
+                                    onclick="goToCompatibilityMatcher()"
+                                    class="w-full bg-[#ff006e] text-white py-3 rounded-xl font-semibold hover:bg-[#e6006a] transition-all"
+                                >
+                                    💘 Medir Compatibilidad
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                `}
+                ` : state.view === 'compatibility-input' ? `
+                <!-- Compatibility Matcher UI -->
+                <div class="space-y-6">
+                    <div class="text-center mb-8">
+                        <div class="text-5xl mb-3">💘</div>
+                        <h2 class="text-3xl font-bold text-[#ff006e] mb-2">
+                            MEDIDOR DE COMPATIBILIDAD
+                        </h2>
+                        <p class="text-gray-400">Descubre qué tan compatible eres con tu crush</p>
+                    </div>
+
+                    <!-- Pronoun Selection for Compatibility -->
+                    <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                        <div class="text-center mb-4">
+                            <h3 class="font-bold text-lg text-[#ffd93d] mb-2">Pronombres</h3>
+                            <p class="text-sm text-gray-400">¿Cómo quieres que hablemos de ti en el análisis?</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button
+                                onclick="setState({ pronoun: 'masculino' })"
+                                class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'masculino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                            >
+                                Él
+                            </button>
+                            <button
+                                onclick="setState({ pronoun: 'femenino' })"
+                                class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'femenino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                            >
+                                Ella
+                            </button>
+                            <button
+                                onclick="setState({ pronoun: 'neutro' })"
+                                class="flex-1 py-3 rounded-lg font-semibold transition-all ${state.pronoun === 'neutro' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                            >
+                                Elle
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tu Perfil -->
+                    <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                        <h3 class="font-bold text-lg mb-4 text-[#ffd93d]">👤 Tu Perfil</h3>
+                        <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <p class="text-sm text-gray-300">
+                                    <span class="font-semibold">Sube tu screenshot</span>
+                                </p>
+                            </div>
+                            <input
+                                type="file"
+                                class="hidden"
+                                accept="image/*"
+                                id="user-screenshot-input"
+                                onchange="handleUserScreenshotChange(this.files[0])"
+                            />
+                        </label>
+                        ${state.compatibilityUser?.screenshot ? `
+                            <img src="${state.compatibilityUser.screenshot}" alt="Preview" class="mt-3 rounded-lg mx-auto max-h-32 object-contain" />
+                        ` : ''}
+                    </div>
+
+                    <!-- Perfil de Tu Crush -->
+                    <div class="bg-[#14181c] rounded-2xl shadow-xl p-6 border border-[#2c3440]">
+                        <h3 class="font-bold text-lg mb-4 text-[#ffd93d]">💕 Perfil de la Otra Persona</h3>
+
+                        <!-- Crush Pronoun Selection -->
+                        <div class="mb-4 pb-4 border-b border-[#2c3440]">
+                            <label class="block text-sm text-gray-400 mb-2">¿Qué pronombres usa esta persona?</label>
+                            <div class="flex gap-3">
+                                <button
+                                    onclick="setState({ crushPronoun: 'masculino' })"
+                                    class="flex-1 py-2 rounded-lg font-semibold text-sm transition-all ${state.crushPronoun === 'masculino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Él
+                                </button>
+                                <button
+                                    onclick="setState({ crushPronoun: 'femenino' })"
+                                    class="flex-1 py-2 rounded-lg font-semibold text-sm transition-all ${state.crushPronoun === 'femenino' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Ella
+                                </button>
+                                <button
+                                    onclick="setState({ crushPronoun: 'neutro' })"
+                                    class="flex-1 py-2 rounded-lg font-semibold text-sm transition-all ${state.crushPronoun === 'neutro' ? 'bg-[#ff006e] text-white' : 'bg-[#2c3440] text-gray-300 hover:bg-[#3a4554]'}"
+                                >
+                                    Elle
+                                </button>
+                            </div>
+                        </div>
+
+                        <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#445566] rounded-xl cursor-pointer hover:border-[#ff006e] transition-all bg-[#1a1f26] hover:bg-[#2c3440]">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-10 h-10 mb-2 text-[#ff006e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <p class="text-sm text-gray-300">
+                                    <span class="font-semibold">Sube su screenshot</span>
+                                </p>
+                            </div>
+                            <input
+                                type="file"
+                                class="hidden"
+                                accept="image/*"
+                                id="crush-screenshot-input"
+                                onchange="handleCrushScreenshotChange(this.files[0])"
+                            />
+                        </label>
+                        ${state.compatibilityCrush?.screenshot ? `
+                            <img src="${state.compatibilityCrush.screenshot}" alt="Preview" class="mt-3 rounded-lg mx-auto max-h-32 object-contain" />
+                        ` : ''}
+                    </div>
+
+                    ${!isProduction ? `
+                        <div class="bg-[#2c3440] border border-[#ffd93d] rounded-xl p-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    id="mock-compatibility-checkbox"
+                                    ${state.useMock ? 'checked' : ''}
+                                    onchange="setState({ useMock: this.checked })"
+                                    class="w-4 h-4 text-[#ffd93d] rounded focus:ring-[#ffd93d]"
+                                />
+                                <span class="text-sm text-[#ffd93d] font-medium">
+                                    🛠️ Modo Debug (usar mock data - solo dev/preview)
+                                </span>
+                            </label>
+                        </div>
+                    ` : ''}
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-3">
+                        <button
+                            onclick="analyzeCompatibility()"
+                            ${state.loading || !canAnalyzeCompatibility() ? 'disabled' : ''}
+                            class="w-full bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            ${state.loading ? '💘 Analizando compatibilidad...' : '💘 Analizar Compatibilidad'}
+                        </button>
+                        <button
+                            onclick="resetApp()"
+                            class="w-full bg-[#2c3440] text-gray-300 py-3 rounded-xl font-semibold hover:bg-[#3a4554] transition-all border border-[#445566]"
+                        >
+                            ← Volver al Inicio
+                        </button>
+                    </div>
+
+                    ${state.error ? `
+                        <div class="p-4 bg-[#2c3440] border border-[#ff4757] rounded-lg text-[#ff4757] text-center">
+                            ${state.error}
+                        </div>
+                    ` : ''}
+                </div>
+                ` : state.view === 'compatibility-results' ? `
+                <!-- Floating Slide Indicators for Compatibility -->
+                <div class="slide-indicators-floating px-4 pt-3 pb-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            ${Array.from({length: TOTAL_SLIDES}).map((_, i) => `
+                                <button
+                                    onclick="goToSlide(${i})"
+                                    class="slide-indicator ${i === state.currentSlide ? 'active' : ''} w-3 h-3 rounded-full transition-all cursor-pointer ${i === state.currentSlide ? 'bg-[#ff006e]' : i < state.currentSlide ? 'bg-[#ff006e] opacity-60 hover:opacity-80' : 'bg-[#445566] hover:bg-[#5a6678]'}"
+                                    aria-label="Ir a slide ${i + 1}"
+                                ></button>
+                            `).join('')}
+                        </div>
+                        <div class="text-sm font-bold">
+                            <span class="text-[#ff006e]">${state.currentSlide + 1}</span><span class="text-gray-500">/${TOTAL_SLIDES}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compatibility Result Card with Slides -->
+                <div class="space-y-6">
+                    <div
+                        id="compatibility-result-card"
+                        class="story-card bg-[#14181c] rounded-3xl shadow-2xl overflow-hidden mx-auto border border-[#2c3440] slide-container"
+                        ontouchstart="handleTouchStart(event)"
+                        ontouchmove="handleTouchMove(event)"
+                        ontouchend="handleTouchEnd()"
+                    >
+                        <div class="h-full flex flex-col text-white relative">
+                            <!-- Navigation Arrows (Desktop only) -->
+                            <button
+                                onclick="prevSlide()"
+                                ${state.currentSlide === 0 ? 'disabled' : ''}
+                                class="nav-arrow nav-arrow-left"
+                                aria-label="Slide anterior"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <button
+                                onclick="nextSlide()"
+                                ${state.currentSlide === TOTAL_SLIDES - 1 ? 'disabled' : ''}
+                                class="nav-arrow nav-arrow-right"
+                                aria-label="Siguiente slide"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+
+                            <!-- Slide Content -->
+                            <div class="p-4 pt-16 slide-content" style="flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center;">
+                                ${getCompatibilitySlideContent(state.currentSlide, state.compatibilityResult)}
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="text-center py-3 flex-shrink-0 bg-[#14181c] border-t border-[#2c3440]" style="flex: 0 0 auto;">
+                                <p class="text-[9px] text-gray-500">cinematch.app (fake lol)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-4">
+                        ${state.wasRestoredFromStorage ? `
+                            <div class="bg-[#2c3440] border border-[#ffd93d] rounded-xl p-3 text-center">
+                                <p class="text-sm text-[#ffd93d]">
+                                    ✨ Tu análisis de compatibilidad fue restaurado
+                                </p>
+                            </div>
+                        ` : ''}
+                        <div class="flex gap-4">
+                            <button
+                                onclick="downloadCompatibilityResult()"
+                                class="flex-1 bg-[#ff006e] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#e6006a] transition-all"
+                            >
+                                📱 Descargar para Stories
+                            </button>
+                            <button
+                                onclick="resetApp()"
+                                class="flex-1 bg-[#2c3440] text-gray-300 py-4 rounded-xl font-semibold text-lg hover:bg-[#3a4554] transition-all border border-[#445566]"
+                            >
+                                🔄 Hacer Otro
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
             `;
 
             // Re-attach event listener for file input
@@ -701,8 +1552,8 @@
                 fileInput.addEventListener('change', handleImageUpload);
             }
 
-            // Start auto-slide when result is shown
-            if (state.result && !state.autoSlideTimer) {
+            // Start auto-slide when result is shown (standard or compatibility)
+            if ((state.result || state.compatibilityResult) && !state.autoSlideTimer) {
                 startAutoSlide();
             }
 
@@ -716,14 +1567,36 @@
                     }, 100);
                 }
             }
+
+            // Auto-scroll for compatibility results
+            if (state.compatibilityResult && !state.hasScrolledToResults) {
+                const resultCard = document.getElementById('compatibility-result-card');
+                if (resultCard) {
+                    state.hasScrolledToResults = true;
+                    setTimeout(() => {
+                        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+            }
         }
 
         // Load saved data on startup
         const savedData = loadFromLocalStorage();
         if (savedData) {
-            state.result = savedData.result;
-            state.image = savedData.image;
-            state.wasRestoredFromStorage = true;
+            console.log('Restoring from localStorage, type:', savedData.type);
+
+            if (savedData.type === 'standard') {
+                state.result = savedData.result;
+                state.image = savedData.image;
+                state.view = 'results';
+                state.wasRestoredFromStorage = true;
+                state.hasScrolledToResults = false; // Reset para que auto-scroll funcione
+            } else if (savedData.type === 'compatibility') {
+                state.compatibilityResult = savedData.compatibilityResult;
+                state.view = 'compatibility-results';
+                state.wasRestoredFromStorage = true;
+                state.hasScrolledToResults = false; // Reset para que auto-scroll funcione
+            }
         }
 
         // Initial render

@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { imageData, useMock } = req.body;
+    const { imageData, useMock, pronoun = 'neutro' } = req.body;
 
     if (!imageData) {
       return res.status(400).json({ error: 'No image data provided' });
@@ -191,6 +191,11 @@ Ratings favoritas: ${parsedInfo.ratings?.favorites?.join(', ') || 'N/A'}
 Películas vistas recientemente: ${parsedInfo.recent.join(', ')}
 Ratings recientes: ${parsedInfo.ratings?.recent?.join(', ') || 'N/A'}
 Stats adicionales: ${parsedInfo.stats || 'N/A'}
+
+PRONOMBRES: Usa lenguaje neutro o adaptado al pronombre "${pronoun}".
+- Si es "masculino": usa "él", "este usuario", "es analítico", etc.
+- Si es "femenino": usa "ella", "esta usuaria", "es analítica", etc.
+- Si es "neutro": usa "elle", "esta persona", lenguaje neutro ("es analítique" o reformula sin género: "tiene mente analítica")
 
 IMPORTANTE: Responde SOLO con un objeto JSON, sin markdown, sin explicaciones, sin backticks. El JSON debe tener esta estructura exacta:
 
